@@ -29,6 +29,7 @@ builder.Services.AddSwaggerGen(options =>
 
 builder.Services.AddScoped<TokenService>();
 builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<ICandidateService, CandidateService>();
 
 builder.Services.AddScoped<IVacancyService, VacancyService>();
 

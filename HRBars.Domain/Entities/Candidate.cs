@@ -13,7 +13,8 @@ public class Candidate
     public string? ResumeStorageKey { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
-    
+    public DateTime? ArchivedAt { get; set; }
+
     public ICollection<WorkExperience> WorkExperiences { get; set; } = new List<WorkExperience>();
     public ICollection<Education> Educations { get; set; } = new List<Education>();
     public ICollection<Application> Applications { get; set; } = new List<Application>();
