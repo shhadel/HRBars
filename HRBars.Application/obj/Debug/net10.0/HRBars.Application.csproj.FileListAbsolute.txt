@@ -32,3 +32,4 @@ C:\Users\ashai\Desktop\HRBars\HRBars.Application\obj\Debug\net10.0\HRBars.Applic
 C:\Users\ashai\Desktop\HRBars\HRBars.Application\obj\Debug\net10.0\refint\HRBars.Application.dll
 C:\Users\ashai\Desktop\HRBars\HRBars.Application\obj\Debug\net10.0\HRBars.Application.pdb
 C:\Users\ashai\Desktop\HRBars\HRBars.Application\obj\Debug\net10.0\ref\HRBars.Application.dll
+C:\Users\ashai\Desktop\HRBars\HRBars.Application\obj\Debug\net10.0\HRBars.Application.sourcelink.json

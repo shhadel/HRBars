@@ -32,3 +32,4 @@ C:\Users\ashai\Desktop\HRBars\HRBars.Infrastructure\obj\Debug\net10.0\refint\HRB
 C:\Users\ashai\Desktop\HRBars\HRBars.Infrastructure\obj\Debug\net10.0\HRBars.Infrastructure.pdb
 C:\Users\ashai\Desktop\HRBars\HRBars.Infrastructure\obj\Debug\net10.0\HRBars.Infrastructure.genruntimeconfig.cache
 C:\Users\ashai\Desktop\HRBars\HRBars.Infrastructure\obj\Debug\net10.0\ref\HRBars.Infrastructure.dll
+C:\Users\ashai\Desktop\HRBars\HRBars.Infrastructure\obj\Debug\net10.0\HRBars.Infrastructure.sourcelink.json

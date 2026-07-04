@@ -30,6 +30,11 @@ builder.Services.AddSwaggerGen(options =>
 builder.Services.AddScoped<TokenService>();
 builder.Services.AddScoped<IUserService, UserService>();
 
+builder.Services.AddScoped<IVacancyService, VacancyService>();
+
+builder.Services.AddScoped<IEducationService, EducationService>();
+builder.Services.AddScoped<IWorkExperienceService, WorkExperienceService>();
+
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(
         builder.Configuration.GetConnectionString("DefaultConnection"),
