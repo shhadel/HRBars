@@ -6,419 +6,218 @@ using HRBars.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
-namespace HRBars.Application.Services
+namespace HRBars.Application.Services;
+
+public class VacancyService : IVacancyService
 {
-    public class VacancyService : IVacancyService
+    private readonly AppDbContext _context;
+    private readonly ILogger<VacancyService> _logger;
+
+    public VacancyService(AppDbContext context, ILogger<VacancyService> logger)
     {
-        private readonly AppDbContext _context;
-        private readonly ILogger<VacancyService> _logger;
+        _context = context;
+        _logger = logger;
+    }
 
-        public VacancyService(AppDbContext context, ILogger<VacancyService> logger)
+    public async Task<(List<VacancyListResponse> Items, int TotalCount)> GetVacanciesAsync(GetVacanciesQuery query)
+    {
+        var vacanciesQuery = _context.Vacancies
+            .Include(v => v.Applications)
+            .AsQueryable();
+
+        // Фильтрация по поиску
+        if (!string.IsNullOrWhiteSpace(query.Search))
         {
-            _context = context;
-            _logger = logger;
+            var search = query.Search.ToLower();
+            vacanciesQuery = vacanciesQuery.Where(v =>
+                v.Title.ToLower().Contains(search) ||
+                (v.Department != null && v.Department.ToLower().Contains(search)) ||
+                (v.Description != null && v.Description.ToLower().Contains(search)));
         }
 
-        public async Task<PaginatedResult<VacancyResponse>> GetVacanciesAsync(GetVacancies query)
+        // Фильтрация по отделу
+        if (!string.IsNullOrWhiteSpace(query.Department))
         {
-            var vacanciesQuery = _context.Vacancies
-                .Include(v => v.Applications)
-                .Include(v => v.CompetencyMatrixTemplates)
-                    .ThenInclude(t => t.Competencies)
-                .AsQueryable();
-
-            // Фильтрация
-            if (!string.IsNullOrWhiteSpace(query.Search))
-            {
-                var search = query.Search.ToLower();
-                vacanciesQuery = vacanciesQuery.Where(v =>
-                    v.Title.ToLower().Contains(search) ||
-                    (v.Department != null && v.Department.ToLower().Contains(search)) ||
-                    (v.Description != null && v.Description.ToLower().Contains(search)));
-            }
-
-            if (!string.IsNullOrWhiteSpace(query.Department))
-            {
-                vacanciesQuery = vacanciesQuery.Where(v => v.Department == query.Department);
-            }
-
-            // Архивные показываем только если явно запросили
-            if (!query.IncludeArchived)
-            {
-                vacanciesQuery = vacanciesQuery.Where(v => !v.IsArchived);
-            }
-            else if (query.IsArchived.HasValue)
-            {
-                vacanciesQuery = vacanciesQuery.Where(v => v.IsArchived == query.IsArchived.Value);
-            }
-
-            var totalCount = await vacanciesQuery.CountAsync();
-
-            var items = await vacanciesQuery
-                .OrderByDescending(v => v.CreatedAt)
-                .Skip((query.Page - 1) * query.PageSize)
-                .Take(query.PageSize)
-                .Select(v => new VacancyResponse
-                {
-                    Id = v.Id,
-                    Title = v.Title,
-                    Department = v.Department,
-                    Description = v.Description,
-                    IsArchived = v.IsArchived,
-                    CreatedAt = v.CreatedAt,
-                    ApplicationsCount = v.Applications.Count,
-                    Competencies = v.CompetencyMatrixTemplates
-                        .SelectMany(t => t.Competencies)
-                        .Select(c => c.Name)
-                        .Distinct()
-                        .ToList()
-                })
-                .ToListAsync();
-
-            return new PaginatedResult<VacancyResponse>
-            {
-                Items = items,
-                TotalCount = totalCount,
-                Page = query.Page,
-                PageSize = query.PageSize
-            };
+            vacanciesQuery = vacanciesQuery.Where(v => v.Department == query.Department);
         }
 
-        public async Task<VacancyDetails?> GetVacancyByIdAsync(Guid id)
+        // Фильтрация по архиву
+        if (query.IsArchived.HasValue)
         {
-            var vacancy = await _context.Vacancies
-                .Include(v => v.Applications)
-                    .ThenInclude(a => a.Candidate)
-                .Include(v => v.CompetencyMatrixTemplates)
-                    .ThenInclude(t => t.Competencies)
-                .FirstOrDefaultAsync(v => v.Id == id);
+            vacanciesQuery = vacanciesQuery.Where(v => v.IsArchived == query.IsArchived.Value);
+        }
 
-            if (vacancy == null)
-                return null;
+        var totalCount = await vacanciesQuery.CountAsync();
 
-            return new VacancyDetails
+        var vacancies = await vacanciesQuery
+            .OrderByDescending(v => v.CreatedAt)
+            .Skip((query.Page - 1) * query.PageSize)
+            .Take(query.PageSize)
+            .Select(v => new VacancyListResponse
             {
-                Id = vacancy.Id,
-                Title = vacancy.Title,
-                Department = vacancy.Department,
-                Description = vacancy.Description,
-                IsArchived = vacancy.IsArchived,
-                CreatedAt = vacancy.CreatedAt,
-                ApplicationsCount = vacancy.Applications.Count,
-                Competencies = vacancy.CompetencyMatrixTemplates
-                    .SelectMany(t => t.Competencies)
-                    .Select(c => c.Name)
-                    .Distinct()
-                    .ToList(),
-                RecentApplications = vacancy.Applications
-                    .OrderByDescending(a => a.AppliedAt)
-                    .Take(10)
-                    .Select(a => new ApplicationBrief
-                    {
-                        Id = a.Id,
-                        CandidateName = $"{a.Candidate.LastName} {a.Candidate.FirstName}",
-                        Status = GetStatusName(a.Status),
-                        AppliedAt = a.AppliedAt
-                    })
-                    .ToList(),
-                CompetencyDetails = vacancy.CompetencyMatrixTemplates
-                    .SelectMany(t => t.Competencies)
-                    .Select(c => new CompetencyDetails
-                    {
-                        Id = c.Id,
-                        Name = c.Name,
-                        Category = c.Category,
-                        Description = c.Description,
-                        IsArchived = c.IsArchived,
-                        Weight = 1, // Можно добавить поле в шаблон
-                        MaxScore = 10
-                    })
-                    .ToList()
-            };
-        }
+                Id = v.Id,
+                Title = v.Title,
+                Department = v.Department,
+                IsArchived = v.IsArchived,
+                CreatedAt = v.CreatedAt,
+                ApplicationsCount = v.Applications.Count
+            })
+            .ToListAsync();
 
-        public async Task<VacancyResponse> CreateVacancyAsync(CreateVacancy request, Guid userId)
+        return (vacancies, totalCount);
+    }
+
+    public async Task<VacancyResponse?> GetVacancyByIdAsync(Guid id)
+    {
+        var vacancy = await _context.Vacancies
+            .Include(v => v.Applications)
+            .Include(v => v.CompetencyMatrixTemplates)
+            .ThenInclude(m => m.Competencies)
+            .FirstOrDefaultAsync(v => v.Id == id);
+
+        if (vacancy == null)
+            return null;
+
+        return new VacancyResponse
         {
-            // Проверка на дубликат
-            var existingVacancy = await _context.Vacancies
-                .FirstOrDefaultAsync(v => v.Title == request.Title && !v.IsArchived);
+            Id = vacancy.Id,
+            Title = vacancy.Title,
+            Department = vacancy.Department,
+            Description = vacancy.Description,
+            IsArchived = vacancy.IsArchived,
+            CreatedAt = vacancy.CreatedAt,
+            ApplicationsCount = vacancy.Applications.Count,
+            Competencies = vacancy.CompetencyMatrixTemplates
+                .SelectMany(m => m.Competencies)
+                .Where(c => !c.IsArchived)
+                .Select(c => c.Name)
+                .Distinct()
+                .ToList()
+        };
+    }
 
-            if (existingVacancy != null)
-                throw new InvalidOperationException($"Вакансия с названием '{request.Title}' уже существует");
+    public async Task<VacancyResponse> CreateVacancyAsync(CreateVacancyRequest request)
+    {
+        // Проверка на дубликат названия
+        var existingVacancy = await _context.Vacancies
+            .AnyAsync(v => v.Title == request.Title && !v.IsArchived);
 
-            // Создаём вакансию
-            var vacancy = new Vacancy
-            {
-                Id = Guid.NewGuid(),
-                Title = request.Title,
-                Department = request.Department,
-                Description = request.Description,
-                IsArchived = false,
-                CreatedAt = DateTime.UtcNow
-            };
+        if (existingVacancy)
+            throw new InvalidOperationException($"Вакансия с названием '{request.Title}' уже существует");
 
-            await _context.Vacancies.AddAsync(vacancy);
-
-            // Если есть шаблон компетенций - привязываем
-            if (request.CompetencyTemplateId.HasValue)
-            {
-                var template = await _context.CompetencyMatrixTemplates
-                    .FindAsync(request.CompetencyTemplateId.Value);
-
-                if (template != null && !template.IsArchived)
-                {
-                    // Создаём копию шаблона для этой вакансии
-                    var newTemplate = new CompetencyMatrixTemplate
-                    {
-                        Id = Guid.NewGuid(),
-                        Name = template.Name,
-                        Description = template.Description,
-                        VacancyId = vacancy.Id,
-                        IsArchived = false
-                    };
-
-                    _context.CompetencyMatrixTemplates.Add(newTemplate);
-
-                    // Копируем компетенции
-                    var competencies = await _context.Competencies
-                        .Where(c => c.TemplateId == template.Id && !c.IsArchived)
-                        .ToListAsync();
-
-                    foreach (var comp in competencies)
-                    {
-                        _context.Competencies.Add(new Competency
-                        {
-                            Id = Guid.NewGuid(),
-                            Name = comp.Name,
-                            Category = comp.Category,
-                            Description = comp.Description,
-                            TemplateId = newTemplate.Id,
-                            IsArchived = false
-                        });
-                    }
-                }
-            }
-
-            // Если указаны компетенции вручную
-            if (request.CompetencyNames != null && request.CompetencyNames.Any())
-            {
-                var template = new CompetencyMatrixTemplate
-                {
-                    Id = Guid.NewGuid(),
-                    Name = $"Шаблон для {request.Title}",
-                    VacancyId = vacancy.Id,
-                    IsArchived = false
-                };
-
-                _context.CompetencyMatrixTemplates.Add(template);
-
-                foreach (var compName in request.CompetencyNames.Distinct())
-                {
-                    _context.Competencies.Add(new Competency
-                    {
-                        Id = Guid.NewGuid(),
-                        Name = compName,
-                        TemplateId = template.Id,
-                        IsArchived = false
-                    });
-                }
-            }
-
-            await _context.SaveChangesAsync();
-
-            return await GetVacancyResponseDtoAsync(vacancy.Id);
-        }
-
-        public async Task<VacancyResponse?> UpdateVacancyAsync(Guid id, UpdateVacancy request, Guid userId)
+        var vacancy = new Vacancy
         {
-            var vacancy = await _context.Vacancies.FindAsync(id);
-            if (vacancy == null)
-                return null;
+            Id = Guid.NewGuid(),
+            Title = request.Title,
+            Department = request.Department,
+            Description = request.Description,
+            IsArchived = false,
+            CreatedAt = DateTime.UtcNow
+        };
 
-            // Проверка на дубликат названия
-            if (!string.IsNullOrWhiteSpace(request.Title))
-            {
-                var duplicate = await _context.Vacancies
-                    .FirstOrDefaultAsync(v => v.Title == request.Title && v.Id != id && !v.IsArchived);
+        await _context.Vacancies.AddAsync(vacancy);
+        await _context.SaveChangesAsync();
 
-                if (duplicate != null)
-                    throw new InvalidOperationException($"Вакансия с названием '{request.Title}' уже существует");
+        _logger.LogInformation("Создана вакансия {VacancyId} с названием {VacancyTitle}",
+            vacancy.Id, vacancy.Title);
 
-                vacancy.Title = request.Title;
-            }
+        return await GetVacancyByIdAsync(vacancy.Id)
+               ?? throw new Exception("Не удалось получить созданную вакансию");
+    }
 
-            if (request.Department != null)
-                vacancy.Department = request.Department;
+    public async Task<VacancyResponse> UpdateVacancyAsync(Guid id, UpdateVacancyRequest request)
+    {
+        var vacancy = await _context.Vacancies
+            .FirstOrDefaultAsync(v => v.Id == id);
 
-            if (request.Description != null)
-                vacancy.Description = request.Description;
+        if (vacancy == null)
+            throw new KeyNotFoundException($"Вакансия с ID {id} не найдена");
 
-            await _context.SaveChangesAsync();
+        // Проверка на дубликат названия (исключая текущую)
+        var existingVacancy = await _context.Vacancies
+            .AnyAsync(v => v.Title == request.Title && v.Id != id && !v.IsArchived);
 
-            return await GetVacancyResponseDtoAsync(id);
-        }
+        if (existingVacancy)
+            throw new InvalidOperationException($"Вакансия с названием '{request.Title}' уже существует");
 
-        public async Task ArchiveVacancyAsync(Guid id, Guid userId)
-        {
-            var vacancy = await _context.Vacancies.FindAsync(id);
-            if (vacancy == null)
-                throw new InvalidOperationException("Вакансия не найдена");
+        vacancy.Title = request.Title;
+        vacancy.Department = request.Department;
+        vacancy.Description = request.Description;
 
-            if (vacancy.IsArchived)
-                throw new InvalidOperationException("Вакансия уже в архиве");
+        _context.Vacancies.Update(vacancy);
+        await _context.SaveChangesAsync();
 
-            vacancy.IsArchived = true;
-            await _context.SaveChangesAsync();
-        }
+        _logger.LogInformation("Обновлена вакансия {VacancyId}", id);
 
-        public async Task UnarchiveVacancyAsync(Guid id, Guid userId)
-        {
-            var vacancy = await _context.Vacancies.FindAsync(id);
-            if (vacancy == null)
-                throw new InvalidOperationException("Вакансия не найдена");
+        return await GetVacancyByIdAsync(id)
+            ?? throw new Exception("Не удалось получить обновленную вакансию");
+    }
 
-            if (!vacancy.IsArchived)
-                throw new InvalidOperationException("Вакансия не в архиве");
+    public async Task<bool> ArchiveVacancyAsync(Guid id)
+    {
+        var vacancy = await _context.Vacancies
+            .FirstOrDefaultAsync(v => v.Id == id);
 
-            vacancy.IsArchived = false;
-            await _context.SaveChangesAsync();
-        }
+        if (vacancy == null)
+            return false;
 
-        public async Task<List<CompetencyResponse>> GetVacancyCompetenciesAsync(Guid vacancyId)
-        {
-            return await _context.Competencies
-                .Where(c => c.Template.VacancyId == vacancyId && !c.IsArchived)
-                .Select(c => new CompetencyResponse
-                {
-                    Id = c.Id,
-                    Name = c.Name,
-                    Category = c.Category,
-                    Description = c.Description,
-                    IsArchived = c.IsArchived
-                })
-                .ToListAsync();
-        }
+        if (vacancy.IsArchived)
+            throw new InvalidOperationException("Вакансия уже архивирована");
 
-        public async Task<CompetencyResponse?> AddCompetencyToVacancyAsync(
-            Guid vacancyId,
-            AddCompetencyToVacancy request,
-            Guid userId)
-        {
-            var vacancy = await _context.Vacancies
-                .Include(v => v.CompetencyMatrixTemplates)
-                .FirstOrDefaultAsync(v => v.Id == vacancyId);
+        vacancy.IsArchived = true;
+        await _context.SaveChangesAsync();
 
-            if (vacancy == null)
-                return null;
+        _logger.LogInformation("Архивирована вакансия {VacancyId}", id);
 
-            // Проверка на дубликат
-            var existing = await _context.Competencies
-                .AnyAsync(c => c.Template.VacancyId == vacancyId && c.Name == request.Name && !c.IsArchived);
+        return true;
+    }
 
-            if (existing)
-                throw new InvalidOperationException($"Компетенция '{request.Name}' уже добавлена к этой вакансии");
+    public async Task<bool> UnarchiveVacancyAsync(Guid id)
+    {
+        var vacancy = await _context.Vacancies
+            .FirstOrDefaultAsync(v => v.Id == id);
 
-            // Находим или создаём шаблон для вакансии
-            var template = vacancy.CompetencyMatrixTemplates.FirstOrDefault(t => !t.IsArchived);
-            if (template == null)
-            {
-                template = new CompetencyMatrixTemplate
-                {
-                    Id = Guid.NewGuid(),
-                    Name = $"Шаблон для {vacancy.Title}",
-                    VacancyId = vacancyId,
-                    IsArchived = false
-                };
-                _context.CompetencyMatrixTemplates.Add(template);
-                await _context.SaveChangesAsync();
-            }
+        if (vacancy == null)
+            return false;
 
-            var competency = new Competency
-            {
-                Id = Guid.NewGuid(),
-                Name = request.Name,
-                Category = request.Category,
-                Description = request.Description,
-                TemplateId = template.Id,
-                IsArchived = false
-            };
+        if (!vacancy.IsArchived)
+            throw new InvalidOperationException("Вакансия не архивирована");
 
-            _context.Competencies.Add(competency);
-            await _context.SaveChangesAsync();
+        vacancy.IsArchived = false;
+        await _context.SaveChangesAsync();
 
-            return new CompetencyResponse
-            {
-                Id = competency.Id,
-                Name = competency.Name,
-                Category = competency.Category,
-                Description = competency.Description,
-                IsArchived = competency.IsArchived
-            };
-        }
+        _logger.LogInformation("Разархивирована вакансия {VacancyId}", id);
 
-        public async Task<bool> RemoveCompetencyFromVacancyAsync(Guid vacancyId, Guid competencyId, Guid userId)
-        {
-            var competency = await _context.Competencies
-                .FirstOrDefaultAsync(c => c.Id == competencyId && c.Template.VacancyId == vacancyId);
+        return true;
+    }
 
-            if (competency == null)
-                return false;
+    public async Task<bool> DeleteVacancyAsync(Guid id)
+    {
+        var vacancy = await _context.Vacancies
+            .Include(v => v.Applications)
+            .Include(v => v.CompetencyMatrixTemplates)
+            .FirstOrDefaultAsync(v => v.Id == id);
 
-            // Мягкое удаление (архивация)
-            competency.IsArchived = true;
-            await _context.SaveChangesAsync();
-            return true;
-        }
+        if (vacancy == null)
+            return false;
 
-        public async Task<bool> VacancyExistsAsync(Guid id)
-        {
-            return await _context.Vacancies.AnyAsync(v => v.Id == id);
-        }
+        // Проверяем, есть ли связанные данные
+        if (vacancy.Applications.Any())
+            throw new InvalidOperationException("Невозможно удалить вакансию, так как есть связанные заявки");
 
-        public async Task<bool> IsVacancyArchivedAsync(Guid id)
-        {
-            var vacancy = await _context.Vacancies.FindAsync(id);
-            return vacancy?.IsArchived ?? true;
-        }
+        if (vacancy.CompetencyMatrixTemplates.Any())
+            throw new InvalidOperationException("Невозможно удалить вакансию, так как есть связанные матрицы компетенций");
 
-        private async Task<VacancyResponse> GetVacancyResponseDtoAsync(Guid vacancyId)
-        {
-            var vacancy = await _context.Vacancies
-                .Include(v => v.Applications)
-                .Include(v => v.CompetencyMatrixTemplates)
-                    .ThenInclude(t => t.Competencies)
-                .FirstOrDefaultAsync(v => v.Id == vacancyId);
+        _context.Vacancies.Remove(vacancy);
+        await _context.SaveChangesAsync();
 
-            return new VacancyResponse
-            {
-                Id = vacancy.Id,
-                Title = vacancy.Title,
-                Department = vacancy.Department,
-                Description = vacancy.Description,
-                IsArchived = vacancy.IsArchived,
-                CreatedAt = vacancy.CreatedAt,
-                ApplicationsCount = vacancy.Applications.Count,
-                Competencies = vacancy.CompetencyMatrixTemplates
-                    .SelectMany(t => t.Competencies)
-                    .Select(c => c.Name)
-                    .Distinct()
-                    .ToList()
-            };
-        }
+        _logger.LogInformation("Удалена вакансия {VacancyId}", id);
 
-        private string GetStatusName(short status)
-        {
-            return status switch
-            {
-                0 => "New",
-                1 => "Viewed",
-                2 => "Interview_Scheduled",
-                3 => "Interview_Done",
-                4 => "Approved",
-                5 => "Rejected",
-                6 => "Hired",
-                _ => "Unknown"
-            };
-        }
+        return true;
+    }
+
+    public async Task<bool> VacancyExistsAsync(Guid id)
+    {
+        return await _context.Vacancies.AnyAsync(v => v.Id == id);
     }
 }

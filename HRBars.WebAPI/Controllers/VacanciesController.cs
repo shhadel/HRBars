@@ -10,62 +10,85 @@ namespace HRBars.WebAPI.Controllers;
 public class VacanciesController : ControllerBase
 {
     private readonly IVacancyService _vacancyService;
-    //private readonly IAuditService _auditService;
     private readonly ILogger<VacanciesController> _logger;
 
-    public VacanciesController(
-        IVacancyService vacancyService,
-        //IAuditService auditService,
-        ILogger<VacanciesController> logger)
+    public VacanciesController(IVacancyService vacancyService, ILogger<VacanciesController> logger)
     {
         _vacancyService = vacancyService;
-        //_auditService = auditService;
         _logger = logger;
     }
 
     /// <summary>
-    /// Получить список всех вакансий
+    /// Получить список вакансий
     /// </summary>
+    /// <remarks>
+    /// Поддерживает фильтрацию:
+    /// - по поиску (search)
+    /// - по отделу (department)
+    /// - по архиву (isArchived)
+    /// </remarks>
     [HttpGet]
-    [ProducesResponseType(typeof(PaginatedResult<VacancyResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> GetVacancies(
-        [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 20,
         [FromQuery] string? search = null,
         [FromQuery] string? department = null,
-        [FromQuery] bool? isArchived = false,
-        [FromQuery] bool includeArchived = false)
+        [FromQuery] bool? isArchived = null,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20)
     {
-        var query = new GetVacancies
+        try
         {
-            Page = page,
-            PageSize = pageSize,
-            Search = search,
-            Department = department,
-            IsArchived = includeArchived ? null : false, // По умолчанию не показываем архивные
-            IncludeArchived = includeArchived
-        };
+            var query = new GetVacanciesQuery
+            {
+                Page = page,
+                PageSize = pageSize,
+                Search = search,
+                Department = department,
+                IsArchived = isArchived
+            };
 
-        var result = await _vacancyService.GetVacanciesAsync(query);
-        return Ok(result);
+            var (items, totalCount) = await _vacancyService.GetVacanciesAsync(query);
+
+            return Ok(new
+            {
+                items,
+                totalCount,
+                page,
+                pageSize,
+                totalPages = (int)Math.Ceiling((double)totalCount / pageSize)
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Ошибка при получении списка вакансий");
+            return StatusCode(500, new { message = "Внутренняя ошибка сервера" });
+        }
     }
 
     /// <summary>
-    /// Получить карточку вакансии по ID
+    /// Получить карточку вакансии
     /// </summary>
     [HttpGet("{id:guid}")]
-    [ProducesResponseType(typeof(VacancyDetails), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(VacancyResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> GetVacancyById(Guid id)
     {
-        var vacancy = await _vacancyService.GetVacancyByIdAsync(id);
+        try
+        {
+            var vacancy = await _vacancyService.GetVacancyByIdAsync(id);
 
-        if (vacancy == null)
-            return NotFound(new { message = "Вакансия не найдена" });
+            if (vacancy == null)
+                return NotFound(new { message = "Вакансия не найдена" });
 
-        return Ok(vacancy);
+            return Ok(vacancy);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Ошибка при получении вакансии {VacancyId}", id);
+            return StatusCode(500, new { message = "Внутренняя ошибка сервера" });
+        }
     }
 
     /// <summary>
@@ -74,31 +97,21 @@ public class VacanciesController : ControllerBase
     [HttpPost]
     [ProducesResponseType(typeof(VacancyResponse), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    public async Task<IActionResult> CreateVacancy([FromBody] CreateVacancy request)
+    public async Task<IActionResult> CreateVacancy([FromBody] CreateVacancyRequest request)
     {
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
 
         try
         {
-            var userId = GetCurrentUserId();
-            var createdVacancy = await _vacancyService.CreateVacancyAsync(request, userId);
-
-            // Логируем создание
-            /*await _auditService.LogAsync(
-                entityName: "Vacancy",
-                entityId: createdVacancy.Id,
-                action: "Create",
-                description: $"Создана вакансия '{createdVacancy.Title}'",
-                userId: userId
-            );*/
-
-            return CreatedAtAction(nameof(GetVacancyById), new { id = createdVacancy.Id }, createdVacancy);
+            var vacancy = await _vacancyService.CreateVacancyAsync(request);
+            return CreatedAtAction(nameof(GetVacancyById), new { id = vacancy.Id }, vacancy);
         }
         catch (InvalidOperationException ex)
         {
-            return BadRequest(new { message = ex.Message });
+            return Conflict(new { message = ex.Message });
         }
         catch (Exception ex)
         {
@@ -114,34 +127,25 @@ public class VacanciesController : ControllerBase
     [ProducesResponseType(typeof(VacancyResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    public async Task<IActionResult> UpdateVacancy(Guid id, [FromBody] UpdateVacancy request)
+    public async Task<IActionResult> UpdateVacancy(Guid id, [FromBody] UpdateVacancyRequest request)
     {
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
 
         try
         {
-            var userId = GetCurrentUserId();
-            var updatedVacancy = await _vacancyService.UpdateVacancyAsync(id, request, userId);
-
-            if (updatedVacancy == null)
-                return NotFound(new { message = "Вакансия не найдена" });
-
-            // Логируем обновление
-            /*await _auditService.LogAsync(
-                entityName: "Vacancy",
-                entityId: id,
-                action: "Update",
-                description: $"Обновлена вакансия '{updatedVacancy.Title}'",
-                userId: userId
-            );*/
-
-            return Ok(updatedVacancy);
+            var vacancy = await _vacancyService.UpdateVacancyAsync(id, request);
+            return Ok(vacancy);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
         }
         catch (InvalidOperationException ex)
         {
-            return BadRequest(new { message = ex.Message });
+            return Conflict(new { message = ex.Message });
         }
         catch (Exception ex)
         {
@@ -162,31 +166,20 @@ public class VacanciesController : ControllerBase
     {
         try
         {
-            var userId = GetCurrentUserId();
-            var vacancy = await _vacancyService.GetVacancyByIdAsync(id);
+            var result = await _vacancyService.ArchiveVacancyAsync(id);
 
-            if (vacancy == null)
+            if (!result)
                 return NotFound(new { message = "Вакансия не найдена" });
 
-            if (vacancy.IsArchived)
-                return BadRequest(new { message = "Вакансия уже находится в архиве" });
-
-            await _vacancyService.ArchiveVacancyAsync(id, userId);
-
-            // Логируем архивацию
-            /*await _auditService.LogAsync(
-                entityName: "Vacancy",
-                entityId: id,
-                action: "Archive",
-                description: $"Вакансия '{vacancy.Title}' заархивирована",
-                userId: userId
-            );*/
-
-            return Ok(new { message = "Вакансия успешно заархивирована" });
+            return Ok(new { message = "Вакансия успешно архивирована" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Ошибка при архивации вакансии {VacancyId}", id);
+            _logger.LogError(ex, "Ошибка при архивировании вакансии {VacancyId}", id);
             return StatusCode(500, new { message = "Внутренняя ошибка сервера" });
         }
     }
@@ -203,108 +196,51 @@ public class VacanciesController : ControllerBase
     {
         try
         {
-            var userId = GetCurrentUserId();
-            var vacancy = await _vacancyService.GetVacancyByIdAsync(id);
+            var result = await _vacancyService.UnarchiveVacancyAsync(id);
 
-            if (vacancy == null)
+            if (!result)
                 return NotFound(new { message = "Вакансия не найдена" });
-
-            if (!vacancy.IsArchived)
-                return BadRequest(new { message = "Вакансия не находится в архиве" });
-
-            await _vacancyService.UnarchiveVacancyAsync(id, userId);
-
-            // Логируем разархивацию
-            /*await _auditService.LogAsync(
-                entityName: "Vacancy",
-                entityId: id,
-                action: "Unarchive",
-                description: $"Вакансия '{vacancy.Title}' разархивирована",
-                userId: userId
-            );*/
 
             return Ok(new { message = "Вакансия успешно разархивирована" });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Ошибка при разархивации вакансии {VacancyId}", id);
-            return StatusCode(500, new { message = "Внутренняя ошибка сервера" });
-        }
-    }
-
-    /// <summary>
-    /// Получить список компетенций для вакансии
-    /// </summary>
-    [HttpGet("{id:guid}/competencies")]
-    [ProducesResponseType(typeof(List<CompetencyResponse>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> GetVacancyCompetencies(Guid id)
-    {
-        var competencies = await _vacancyService.GetVacancyCompetenciesAsync(id);
-        return Ok(competencies);
-    }
-
-    /// <summary>
-    /// Добавить компетенцию к вакансии
-    /// </summary>
-    [HttpPost("{id:guid}/competencies")]
-    [ProducesResponseType(typeof(CompetencyResponse), StatusCodes.Status201Created)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> AddCompetencyToVacancy(
-        Guid id,
-        [FromBody] AddCompetencyToVacancy request)
-    {
-        if (!ModelState.IsValid)
-            return BadRequest(ModelState);
-
-        try
-        {
-            var userId = GetCurrentUserId();
-            var competency = await _vacancyService.AddCompetencyToVacancyAsync(id, request, userId);
-
-            if (competency == null)
-                return NotFound(new { message = "Вакансия не найдена" });
-
-            return CreatedAtAction(nameof(GetVacancyCompetencies), new { id }, competency);
         }
         catch (InvalidOperationException ex)
         {
             return BadRequest(new { message = ex.Message });
         }
-    }
-
-    /// <summary>
-    /// Удалить компетенцию из вакансии
-    /// </summary>
-    [HttpDelete("{id:guid}/competencies/{competencyId:guid}")]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> RemoveCompetencyFromVacancy(Guid id, Guid competencyId)
-    {
-        try
-        {
-            var userId = GetCurrentUserId();
-            var result = await _vacancyService.RemoveCompetencyFromVacancyAsync(id, competencyId, userId);
-
-            if (!result)
-                return NotFound(new { message = "Вакансия или компетенция не найдены" });
-
-            return NoContent();
-        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Ошибка при удалении компетенции из вакансии");
+            _logger.LogError(ex, "Ошибка при разархивировании вакансии {VacancyId}", id);
             return StatusCode(500, new { message = "Внутренняя ошибка сервера" });
         }
     }
 
-    private Guid GetCurrentUserId()
+    /// <summary>
+    /// Удалить вакансию
+    /// </summary>
+    [HttpDelete("{id:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> DeleteVacancy(Guid id)
     {
-        var userIdClaim = User.FindFirst("userId")?.Value;
-        if (string.IsNullOrEmpty(userIdClaim))
-            throw new UnauthorizedAccessException("Пользователь не авторизован");
+        try
+        {
+            var result = await _vacancyService.DeleteVacancyAsync(id);
 
-        return Guid.Parse(userIdClaim);
+            if (!result)
+                return NotFound(new { message = "Вакансия не найдена" });
+
+            return NoContent();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Ошибка при удалении вакансии {VacancyId}", id);
+            return StatusCode(500, new { message = "Внутренняя ошибка сервера" });
+        }
     }
 }

@@ -7,18 +7,13 @@ public static class Hasher
 {
     public static bool VerifyPasswordHash(string password, string storedHash)
     {
-        try
-        {
-            using var sha256 = SHA256.Create();
-            var bytes = Encoding.UTF8.GetBytes(password);
-            var hash = sha256.ComputeHash(bytes);
-            var computedHash = Convert.ToHexString(hash).ToLower();
-            
-            return computedHash == storedHash;
-        }
-        catch
-        {
+        if (string.IsNullOrEmpty(password) || string.IsNullOrEmpty(storedHash))
             return false;
-        }
+
+        using var sha256 = SHA256.Create();
+        var hashedBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(password));
+        var computedHash = Convert.ToBase64String(hashedBytes);
+
+        return computedHash == storedHash;
     }
 }

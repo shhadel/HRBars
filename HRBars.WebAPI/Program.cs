@@ -36,6 +36,11 @@ builder.Services.AddScoped<IVacancyService, VacancyService>();
 builder.Services.AddScoped<IEducationService, EducationService>();
 builder.Services.AddScoped<IWorkExperienceService, WorkExperienceService>();
 
+builder.Services.AddScoped<IApplicationService, ApplicationService>();
+
+builder.Services.AddScoped<ICompetencyMatrixService, CompetencyMatrixService>();
+builder.Services.AddScoped<ICompetencyService, CompetencyService>();
+
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(
         builder.Configuration.GetConnectionString("DefaultConnection"),
