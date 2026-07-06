@@ -47,6 +47,10 @@ builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 
 builder.Services.AddScoped<IInterviewService, InterviewService>();
 
+builder.Services.AddScoped<IInterviewCompetencyScoreService, InterviewCompetencyScoreService>();
+
+builder.Services.AddScoped<ICommentService, CommentService>();
+
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(
         builder.Configuration.GetConnectionString("DefaultConnection"),
