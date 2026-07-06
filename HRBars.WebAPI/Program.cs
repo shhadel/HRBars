@@ -1,6 +1,7 @@
 using HRBars.Application.Interfaces;
 using HRBars.Application.Services;
 using HRBars.Infrastructure.Data;
+using HRBars.WebAPI.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -40,6 +41,11 @@ builder.Services.AddScoped<IApplicationService, ApplicationService>();
 
 builder.Services.AddScoped<ICompetencyMatrixService, CompetencyMatrixService>();
 builder.Services.AddScoped<ICompetencyService, CompetencyService>();
+
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
+
+builder.Services.AddScoped<IInterviewService, InterviewService>();
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(

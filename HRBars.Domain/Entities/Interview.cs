@@ -13,7 +13,8 @@ public class Interview
     public string? DecisionComment { get; set; }
     public DateTime? DecisionDate { get; set; }
     public DateTime CreatedAt { get; set; }
-    
+    public DateTime? ArchivedAt { get; set; }
+
     public Guid ApplicationId { get; set; }
     public Application Application { get; set; } = null!;
     
