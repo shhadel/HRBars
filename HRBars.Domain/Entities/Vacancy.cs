@@ -6,6 +6,10 @@ public class Vacancy
     public string Title { get; set; } = string.Empty;
     public string? Department { get; set; }
     public string? Description { get; set; }
+    public decimal? SalaryFrom { get; set; }
+    public decimal? SalaryTo { get; set; }
+    public short ExperienceRequired { get; set; }
+    public short EmploymentType { get; set; }
     public bool IsArchived { get; set; }
     public DateTime CreatedAt { get; set; }
     

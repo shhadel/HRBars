@@ -2,6 +2,7 @@
 using HRBars.Application.DTOs.Vacancy;
 using HRBars.Application.Interfaces;
 using HRBars.Domain.Entities;
+using HRBars.Domain.Enums;
 using HRBars.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -58,6 +59,10 @@ public class VacancyService : IVacancyService
                 Id = v.Id,
                 Title = v.Title,
                 Department = v.Department,
+                SalaryFrom = v.SalaryFrom,
+                SalaryTo = v.SalaryTo,
+                ExperienceRequired = (ExperienceLevel)v.ExperienceRequired,
+                EmploymentType = (EmploymentType)v.EmploymentType,
                 IsArchived = v.IsArchived,
                 CreatedAt = v.CreatedAt,
                 ApplicationsCount = v.Applications.Count
@@ -84,6 +89,10 @@ public class VacancyService : IVacancyService
             Title = vacancy.Title,
             Department = vacancy.Department,
             Description = vacancy.Description,
+            SalaryFrom = vacancy.SalaryFrom,
+            SalaryTo = vacancy.SalaryTo,
+            ExperienceRequired = (ExperienceLevel)vacancy.ExperienceRequired,
+            EmploymentType = (EmploymentType)vacancy.EmploymentType,
             IsArchived = vacancy.IsArchived,
             CreatedAt = vacancy.CreatedAt,
             ApplicationsCount = vacancy.Applications.Count,
@@ -111,6 +120,10 @@ public class VacancyService : IVacancyService
             Title = request.Title,
             Department = request.Department,
             Description = request.Description,
+            SalaryFrom = request.SalaryFrom,
+            SalaryTo = request.SalaryTo,
+            ExperienceRequired = (short)request.ExperienceRequired,
+            EmploymentType = (short)request.EmploymentType,
             IsArchived = false,
             CreatedAt = DateTime.UtcNow
         };
@@ -143,6 +156,10 @@ public class VacancyService : IVacancyService
         vacancy.Title = request.Title;
         vacancy.Department = request.Department;
         vacancy.Description = request.Description;
+        vacancy.SalaryFrom = request.SalaryFrom;
+        vacancy.SalaryTo = request.SalaryTo;
+        vacancy.ExperienceRequired = (short)request.ExperienceRequired;
+        vacancy.EmploymentType = (short)request.EmploymentType;
 
         _context.Vacancies.Update(vacancy);
         await _context.SaveChangesAsync();

@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using HRBars.Domain.Enums;
 
 namespace HRBars.Application.DTOs.Vacancy;
 public class UpdateVacancyRequest
@@ -12,4 +13,12 @@ public class UpdateVacancyRequest
 
     [StringLength(2000, ErrorMessage = "Описание не должно превышать 2000 символов")]
     public string? Description { get; set; }
+
+    public decimal? SalaryFrom { get; set; }
+
+    public decimal? SalaryTo { get; set; }
+
+    public ExperienceLevel ExperienceRequired { get; set; }
+
+    public EmploymentType EmploymentType { get; set; }
 }
