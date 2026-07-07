@@ -35,7 +35,8 @@ public class CandidateService : ICandidateService
                 (c.MiddleName != null && EF.Functions.ILike(c.MiddleName, search)) ||
                 EF.Functions.ILike(c.Phone, search) ||
                 (c.Email != null && EF.Functions.ILike(c.Email, search)) ||
-                (c.Skills != null && EF.Functions.ILike(c.Skills, search)));
+                (c.Skills != null && EF.Functions.ILike(c.Skills, search)) ||
+                (c.DesiredVacancy != null && EF.Functions.ILike(c.DesiredVacancy, $"%{search}%")));
         }
 
         if (!string.IsNullOrWhiteSpace(query.City))
@@ -61,6 +62,7 @@ public class CandidateService : ICandidateService
                     c.LastName,
                     c.FirstName,
                     c.MiddleName),
+                DesiredVacancy = c.DesiredVacancy,
                 Phone = c.Phone,
                 Email = c.Email,
                 City = c.City,
@@ -100,6 +102,7 @@ public class CandidateService : ICandidateService
                 candidate.LastName,
                 candidate.FirstName,
                 candidate.MiddleName),
+            DesiredVacancy = candidate.DesiredVacancy,
             Phone = candidate.Phone,
             Email = candidate.Email,
             City = candidate.City,
@@ -149,6 +152,7 @@ public class CandidateService : ICandidateService
             FirstName = request.FirstName.Trim(),
             LastName = request.LastName.Trim(),
             MiddleName = request.MiddleName?.Trim(),
+            DesiredVacancy = request.DesiredVacancy?.Trim(),
             Phone = phone,
             Email = email,
             City = request.City?.Trim(),
@@ -181,6 +185,7 @@ public class CandidateService : ICandidateService
         candidate.FirstName = request.FirstName.Trim();
         candidate.LastName = request.LastName.Trim();
         candidate.MiddleName = request.MiddleName?.Trim();
+        candidate.DesiredVacancy = request.DesiredVacancy?.Trim();
         candidate.Phone = phone;
         candidate.Email = email;
         candidate.City = request.City?.Trim();
@@ -270,6 +275,7 @@ public class CandidateService : ICandidateService
                 candidate.LastName,
                 candidate.FirstName,
                 candidate.MiddleName),
+            DesiredVacancy = candidate.DesiredVacancy,
             Phone = candidate.Phone,
             Email = candidate.Email,
             City = candidate.City,

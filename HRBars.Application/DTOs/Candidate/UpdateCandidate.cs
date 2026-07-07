@@ -15,6 +15,9 @@ namespace HRBars.Application.DTOs.Candidate
         [MaxLength(100, ErrorMessage = "Отчество не может превышать 100 символов")]
         public string? MiddleName { get; set; }
 
+        [MaxLength(200)]
+        public string? DesiredVacancy { get; set; }
+
         [Required(ErrorMessage = "Номер телефона обязательно")]
         [Phone]
         [MaxLength(30, ErrorMessage = "Номер телефона не может превышать 30 символов")]
