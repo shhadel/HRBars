@@ -9,7 +9,7 @@ public interface IApplicationService
     Task<ApplicationResponse> CreateApplicationAsync(CreateApplicationRequest request, Guid createdByUserId);
     Task<ApplicationResponse> UpdateApplicationAsync(Guid id, UpdateApplicationRequest request);
     Task<ApplicationResponse> ChangeStatusAsync(Guid id, ChangeStatusRequest request);
-    Task<bool> DeleteApplicationAsync(Guid id);
+    Task<bool> ArchiveApplicationAsync(Guid id);
     Task<bool> ApplicationExistsAsync(Guid id);
     Task<bool> CandidateExistsAsync(Guid candidateId);
     Task<bool> VacancyExistsAsync(Guid vacancyId);

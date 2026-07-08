@@ -43,20 +43,97 @@ public class AppDbContext : DbContext
                 .HasForeignKey(up => up.GrantedBy)
                 .OnDelete(DeleteBehavior.Restrict);
         });
-        
+
+        modelBuilder.Entity<User>(entity =>
+        {
+            entity.HasOne(u => u.CreatedByUser)
+                .WithMany()
+                .HasForeignKey(u => u.CreatedByUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(u => u.UpdatedByUser)
+                .WithMany()
+                .HasForeignKey(u => u.UpdatedByUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
         modelBuilder.Entity<Interview>(entity =>
         {
             entity.HasOne(i => i.CreatedByUser)
                 .WithMany(u => u.CreatedInterviews)
                 .HasForeignKey(i => i.CreatedByUserId)
                 .OnDelete(DeleteBehavior.Restrict);
-            
+
             entity.HasOne(i => i.DecidedByUser)
                 .WithMany(u => u.DecidedInterviews)
                 .HasForeignKey(i => i.DecidedByUserId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(i => i.UpdatedByUser)
+                .WithMany()
+                .HasForeignKey(i => i.UpdatedByUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(i => i.ArchivedByUser)
+                .WithMany()
+                .HasForeignKey(i => i.ArchivedByUserId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
-        
+
+        modelBuilder.Entity<Candidate>(entity =>
+        {
+            entity.HasOne(c => c.CreatedByUser)
+                .WithMany()
+                .HasForeignKey(c => c.CreatedByUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(c => c.UpdatedByUser)
+                .WithMany()
+                .HasForeignKey(c => c.UpdatedByUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(c => c.ArchivedByUser)
+                .WithMany()
+                .HasForeignKey(c => c.ArchivedByUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<Vacancy>(entity =>
+        {
+            entity.HasOne(v => v.CreatedByUser)
+                .WithMany()
+                .HasForeignKey(v => v.CreatedByUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(v => v.UpdatedByUser)
+                .WithMany()
+                .HasForeignKey(v => v.UpdatedByUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(v => v.ArchivedByUser)
+                .WithMany()
+                .HasForeignKey(v => v.ArchivedByUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<Application>(entity =>
+        {
+            entity.HasOne(a => a.CreatedByUser)
+                .WithMany()
+                .HasForeignKey(a => a.CreatedByUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(a => a.UpdatedByUser)
+                .WithMany()
+                .HasForeignKey(a => a.UpdatedByUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(a => a.ArchivedByUser)
+                .WithMany()
+                .HasForeignKey(a => a.ArchivedByUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
         modelBuilder.Entity<InterviewCompetencyScore>()
             .HasIndex(ics => new { ics.InterviewId, ics.CompetencyId })
             .IsUnique();

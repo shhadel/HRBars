@@ -11,16 +11,19 @@ public class ApplicationService : IApplicationService
 {
     private readonly AppDbContext _context;
     private readonly ILogger<ApplicationService> _logger;
+    private readonly ICurrentUserService _currentUser;
 
-    public ApplicationService(AppDbContext context, ILogger<ApplicationService> logger)
+    public ApplicationService(AppDbContext context, ILogger<ApplicationService> logger, ICurrentUserService currentUser)
     {
         _context = context;
         _logger = logger;
+        _currentUser = currentUser;
     }
 
     public async Task<(List<ApplicationListResponse> Items, int TotalCount)> GetApplicationsAsync(GetApplicationsQuery query)
     {
         var applicationsQuery = _context.Applications
+            .Where(a => a.ArchivedAt == null)
             .Include(a => a.Candidate)
             .Include(a => a.Vacancy)
             .Include(a => a.CreatedByUser)
@@ -71,7 +74,9 @@ public class ApplicationService : IApplicationService
             .Include(a => a.CreatedByUser)
             .Include(a => a.StatusHistories)
             .Include(a => a.Interviews)
-            .FirstOrDefaultAsync(a => a.Id == id);
+            .FirstOrDefaultAsync(a => 
+                a.Id == id && 
+                a.ArchivedAt == null);
 
         if (application == null)
             return null;
@@ -94,7 +99,7 @@ public class ApplicationService : IApplicationService
             throw new KeyNotFoundException($"Пользователь с ID {createdByUserId} не найден");
 
         var existingApplication = await _context.Applications
-            .AnyAsync(a => a.CandidateId == request.CandidateId && a.VacancyId == request.VacancyId);
+            .AnyAsync(a => a.CandidateId == request.CandidateId && a.VacancyId == request.VacancyId && a.ArchivedAt == null);
         if (existingApplication)
             throw new InvalidOperationException("Заявка на эту вакансию от этого кандидата уже существует");
 
@@ -131,7 +136,9 @@ public class ApplicationService : IApplicationService
     public async Task<ApplicationResponse> UpdateApplicationAsync(Guid id, UpdateApplicationRequest request)
     {
         var application = await _context.Applications
-            .FirstOrDefaultAsync(a => a.Id == id);
+            .FirstOrDefaultAsync(a =>
+                a.Id == id &&
+                a.ArchivedAt == null);
 
         if (application == null)
             throw new KeyNotFoundException($"Заявка с ID {id} не найдена");
@@ -169,6 +176,8 @@ public class ApplicationService : IApplicationService
         application.CandidateId = request.CandidateId;
         application.VacancyId = request.VacancyId;
         application.Status = (short)request.Status;
+        application.UpdatedByUserId = _currentUser.UserId;
+        application.UpdatedAt = DateTime.UtcNow;
 
         // Если статус "Hired" или "Rejected" - закрываем заявку
         if (request.Status == ApplicationStatus.Hired || request.Status == ApplicationStatus.Rejected)
@@ -193,7 +202,9 @@ public class ApplicationService : IApplicationService
     public async Task<ApplicationResponse> ChangeStatusAsync(Guid id, ChangeStatusRequest request)
     {
         var application = await _context.Applications
-            .FirstOrDefaultAsync(a => a.Id == id);
+            .FirstOrDefaultAsync(a =>
+                a.Id == id &&
+                a.ArchivedAt == null);
 
         if (application == null)
             throw new KeyNotFoundException($"Заявка с ID {id} не найдена");
@@ -231,25 +242,31 @@ public class ApplicationService : IApplicationService
             ?? throw new Exception("Не удалось получить обновленную заявку");
     }
 
-    public async Task<bool> DeleteApplicationAsync(Guid id)
+    public async Task<bool> ArchiveApplicationAsync(Guid id)
     {
         var application = await _context.Applications
-            .FirstOrDefaultAsync(a => a.Id == id);
+            .FirstOrDefaultAsync(a =>
+                a.Id == id &&
+                a.ArchivedAt == null);
 
         if (application == null)
             return false;
 
-        _context.Applications.Remove(application);
+        application.ArchivedAt = DateTime.UtcNow;
+        application.ArchivedByUserId = _currentUser.UserId;
+        application.UpdatedAt = DateTime.UtcNow;
+        application.UpdatedByUserId = _currentUser.UserId;
+
         await _context.SaveChangesAsync();
 
-        _logger.LogInformation("Удалена заявка {ApplicationId}", id);
+        _logger.LogInformation("Архивирована заявка {ApplicationId}", id);
 
         return true;
     }
 
     public async Task<bool> ApplicationExistsAsync(Guid id)
     {
-        return await _context.Applications.AnyAsync(a => a.Id == id);
+        return await _context.Applications.AnyAsync(a => a.Id == id && a.ArchivedAt == null);
     }
 
     public async Task<bool> CandidateExistsAsync(Guid candidateId)

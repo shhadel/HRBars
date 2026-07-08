@@ -13,13 +13,16 @@ namespace HRBars.Application.Services
     {
         private readonly AppDbContext _context;
         private readonly ILogger<UserService> _logger;
+        private readonly ICurrentUserService _currentUser;
 
         public UserService(
             AppDbContext context,
-            ILogger<UserService> logger)
+            ILogger<UserService> logger,
+            ICurrentUserService currentUser)
         {
             _context = context;
             _logger = logger;
+            _currentUser = currentUser;
         }
 
         public async Task<PaginatedResult<UserResponse>> GetUsersAsync(GetUsers query)
@@ -141,7 +144,8 @@ namespace HRBars.Application.Services
                 PasswordHash = HashPassword(request.Password),
                 RoleId = role.Id,
                 IsActive = true,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.UtcNow,
+                CreatedByUserId = _currentUser.UserId
             };
 
             await _context.Users.AddAsync(user);
@@ -255,6 +259,9 @@ namespace HRBars.Application.Services
                     });
                 }
             }
+
+            user.UpdatedByUserId = _currentUser.UserId;
+            user.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
 

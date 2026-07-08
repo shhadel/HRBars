@@ -274,6 +274,8 @@ public class InterviewService : IInterviewService
         interview.DurationMinutes = request.DurationMinutes;
         interview.Location = request.Location?.Trim();
         interview.Plan = request.Plan?.Trim();
+        interview.UpdatedByUserId = _currentUser.UserId;
+        interview.UpdatedAt = DateTime.UtcNow;
 
         await _context.SaveChangesAsync();
 
@@ -390,6 +392,7 @@ public class InterviewService : IInterviewService
         }
 
         interview.ArchivedAt = DateTime.UtcNow;
+        interview.ArchivedByUserId = _currentUser.UserId;
 
         await _context.SaveChangesAsync();
 

@@ -13,11 +13,13 @@ public class VacancyService : IVacancyService
 {
     private readonly AppDbContext _context;
     private readonly ILogger<VacancyService> _logger;
+    private readonly ICurrentUserService _currentUser;
 
-    public VacancyService(AppDbContext context, ILogger<VacancyService> logger)
+    public VacancyService(AppDbContext context, ILogger<VacancyService> logger, ICurrentUserService currentUser)
     {
         _context = context;
         _logger = logger;
+        _currentUser = currentUser;
     }
 
     public async Task<(List<VacancyListResponse> Items, int TotalCount)> GetVacanciesAsync(GetVacanciesQuery query)
@@ -125,7 +127,8 @@ public class VacancyService : IVacancyService
             ExperienceRequired = (short)request.ExperienceRequired,
             EmploymentType = (short)request.EmploymentType,
             IsArchived = false,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.UtcNow,
+            CreatedByUserId = _currentUser.UserId
         };
 
         await _context.Vacancies.AddAsync(vacancy);
@@ -160,6 +163,8 @@ public class VacancyService : IVacancyService
         vacancy.SalaryTo = request.SalaryTo;
         vacancy.ExperienceRequired = (short)request.ExperienceRequired;
         vacancy.EmploymentType = (short)request.EmploymentType;
+        vacancy.UpdatedByUserId = _currentUser.UserId;
+        vacancy.UpdatedAt = DateTime.UtcNow;
 
         _context.Vacancies.Update(vacancy);
         await _context.SaveChangesAsync();
@@ -182,6 +187,8 @@ public class VacancyService : IVacancyService
             throw new InvalidOperationException("Вакансия уже архивирована");
 
         vacancy.IsArchived = true;
+        vacancy.ArchivedByUserId = _currentUser.UserId;
+        vacancy.ArchivedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
 
         _logger.LogInformation("Архивирована вакансия {VacancyId}", id);

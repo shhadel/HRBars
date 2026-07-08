@@ -10,10 +10,12 @@ namespace HRBars.Application.Services;
 public class CandidateService : ICandidateService
 {
     private readonly AppDbContext _context;
+    private readonly ICurrentUserService _currentUser;
 
-    public CandidateService(AppDbContext context)
+    public CandidateService(AppDbContext context, ICurrentUserService currentUser)
     {
         _context = context;
+        _currentUser = currentUser;
     }
 
     public async Task<PaginatedResult<CandidateResponse>> GetCandidatesAsync(GetCandidates query)
@@ -158,7 +160,8 @@ public class CandidateService : ICandidateService
             City = request.City?.Trim(),
             Skills = request.Skills?.Trim(),
             CreatedAt = now,
-            UpdatedAt = now
+            UpdatedAt = now,
+            CreatedByUserId = _currentUser.UserId,
         };
 
         await _context.Candidates.AddAsync(candidate);
@@ -191,6 +194,7 @@ public class CandidateService : ICandidateService
         candidate.City = request.City?.Trim();
         candidate.Skills = request.Skills?.Trim();
         candidate.UpdatedAt = DateTime.UtcNow;
+        candidate.UpdatedByUserId = _currentUser.UserId;
 
         await _context.SaveChangesAsync();
 
@@ -208,6 +212,7 @@ public class CandidateService : ICandidateService
 
         candidate.ArchivedAt = now;
         candidate.UpdatedAt = now;
+        candidate.ArchivedByUserId = _currentUser.UserId;
 
         await _context.SaveChangesAsync();
 

@@ -13,8 +13,14 @@ public class Candidate
     public string? Skills { get; set; }
     public string? ResumeStorageKey { get; set; }
     public DateTime CreatedAt { get; set; }
+    public Guid? CreatedByUserId { get; set; }
+    public User? CreatedByUser { get; set; } 
     public DateTime UpdatedAt { get; set; }
+    public Guid? UpdatedByUserId { get; set; }
+    public User? UpdatedByUser { get; set; }
     public DateTime? ArchivedAt { get; set; }
+    public Guid? ArchivedByUserId { get; set; }
+    public User? ArchivedByUser { get; set; }
 
     public ICollection<WorkExperience> WorkExperiences { get; set; } = new List<WorkExperience>();
     public ICollection<Education> Educations { get; set; } = new List<Education>();

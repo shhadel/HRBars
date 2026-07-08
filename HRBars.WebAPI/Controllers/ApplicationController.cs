@@ -227,7 +227,7 @@ public class ApplicationController : ControllerBase
     {
         try
         {
-            var result = await _applicationService.DeleteApplicationAsync(id);
+            var result = await _applicationService.ArchiveApplicationAsync(id);
 
             if (!result)
                 return NotFound(new { message = "Заявка не найдена" });
@@ -236,7 +236,7 @@ public class ApplicationController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Ошибка при удалении заявки {ApplicationId}", id);
+            _logger.LogError(ex, "Ошибка при архивировании заявки {ApplicationId}", id);
             return StatusCode(500, new { message = "Внутренняя ошибка сервера" });
         }
     }
