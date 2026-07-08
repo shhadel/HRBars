@@ -1,5 +1,6 @@
 using HRBars.Application.DTOs.Candidate;
 using HRBars.Application.Interfaces;
+using HRBars.WebAPI.Attributes;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -18,14 +19,16 @@ public class CandidatesController : ControllerBase
 	}
 
 	[HttpGet]
-	public async Task<ActionResult> GetCandidates([FromQuery] GetCandidates query)
+    [RequirePermission("candidates.view")]
+    public async Task<ActionResult> GetCandidates([FromQuery] GetCandidates query)
 	{
 		var result = await _candidateService.GetCandidatesAsync(query);
 		return Ok(result);
 	}
 
 	[HttpGet("{id:guid}")]
-	public async Task<ActionResult> GetCandidate(Guid id)
+    [RequirePermission("candidates.view")]
+    public async Task<ActionResult> GetCandidate(Guid id)
 	{
 		var candidate = await _candidateService.GetCandidateByIdAsync(id);
 

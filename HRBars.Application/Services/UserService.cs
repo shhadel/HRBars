@@ -114,7 +114,7 @@ namespace HRBars.Application.Services
             };
         }
 
-        public async Task<UserResponse> CreateUserAsync(CreateUser request)
+        public async Task<UserResponse> CreateUserAsync(CreateUser request, Guid createdByUserId)
         {
             // Проверка на существующий Email
             var existingUser = await _context.Users
@@ -159,7 +159,8 @@ namespace HRBars.Application.Services
                     {
                         UserId = user.Id,
                         PermissionId = permission.Id,
-                        GrantedAt = DateTime.UtcNow
+                        GrantedAt = DateTime.UtcNow,
+                        GrantedBy = createdByUserId
                     });
                 }
             }

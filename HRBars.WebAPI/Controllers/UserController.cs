@@ -1,15 +1,16 @@
-﻿using System.IdentityModel.Tokens.Jwt;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Authorization;
-using HRBars.Application.Services;
-using HRBars.Application.DTOs;
-using HRBars.Domain.Entities;
-using HRBars.Infrastructure.Data;
-using Microsoft.EntityFrameworkCore;
-using System.Security.Cryptography;
-using System.Text;
+﻿using HRBars.Application.DTOs;
 using HRBars.Application.DTOs.User;
 using HRBars.Application.Interfaces;
+using HRBars.Application.Services;
+using HRBars.Domain.Entities;
+using HRBars.Infrastructure.Data;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace HRBars.WebAPI.Controllers;
 
@@ -86,7 +87,11 @@ public class UserController : ControllerBase
 
         try
         {
-            var createdUser = await _userService.CreateUserAsync(request);
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+                return Unauthorized(new { message = "Пользователь не авторизован" });
+
+            var createdUser = await _userService.CreateUserAsync(request, Guid.Parse(userIdClaim));
             return CreatedAtAction(nameof(GetUserById), new { id = createdUser.Id }, createdUser);
         }
         catch (InvalidOperationException ex) when (ex.Message.Contains("Email уже существует"))
@@ -188,5 +193,39 @@ public class UserController : ControllerBase
             return NotFound(new { message = "Пользователь не найден" });
 
         return Ok(user);
+    }
+
+    /// <summary>
+    /// Деактивировать пользователя (мягкое удаление)
+    /// </summary>
+    /// <remarks>
+    /// Пользователь не удаляется физически, а только деактивируется.
+    /// Доступно только администратору.
+    /// </remarks>
+    [HttpPut("{id:guid}/activate")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> ActivateUser(Guid id)
+    {
+        try
+        {
+            var result = await _userService.ActivateUserAsync(id);
+
+            if (!result)
+                return NotFound(new { message = "Пользователь не найден" });
+
+            return NoContent();
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("нельзя деактивировать"))
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Ошибка при деактивации пользователя {UserId}", id);
+            return StatusCode(500, new { message = "Внутренняя ошибка сервера" });
+        }
     }
 }

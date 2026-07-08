@@ -55,7 +55,7 @@ public class CommentService : ICommentService
             Section = request.Section?.Trim(),
             Text = request.Text.Trim(),
             CreatedAt = DateTime.UtcNow,
-            CreatedByUserId = _currentUser.UserId
+            CreatedByUserId = _currentUser.UserId ?? throw new UnauthorizedAccessException("Пользователь не авторизован")
         };
 
         await _context.Comments.AddAsync(comment);

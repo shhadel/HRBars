@@ -210,7 +210,7 @@ public class InterviewService : IInterviewService
             Location = request.Location?.Trim(),
             Plan = request.Plan?.Trim(),
             CreatedAt = now,
-            CreatedByUserId = _currentUser.UserId
+            CreatedByUserId = _currentUser.UserId ?? throw new UnauthorizedAccessException("Пользователь не авторизован")
         };
 
         application.Status = (short)ApplicationStatus.InterviewScheduled;

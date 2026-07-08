@@ -1,6 +1,7 @@
 using HRBars.Application.Interfaces;
 using HRBars.Application.Services;
 using HRBars.Infrastructure.Data;
+using HRBars.Infrastructure.Services;
 using HRBars.WebAPI.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -9,6 +10,17 @@ using Microsoft.OpenApi;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll",
+        policy =>
+        {
+            policy.AllowAnyOrigin()
+                .AllowAnyMethod()
+                .AllowAnyHeader();
+        });
+});
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
@@ -43,6 +55,7 @@ builder.Services.AddScoped<ICompetencyMatrixService, CompetencyMatrixService>();
 builder.Services.AddScoped<ICompetencyService, CompetencyService>();
 
 builder.Services.AddHttpContextAccessor();
+builder.Services.AddMemoryCache();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 
 builder.Services.AddScoped<IInterviewService, InterviewService>();
@@ -50,6 +63,8 @@ builder.Services.AddScoped<IInterviewService, InterviewService>();
 builder.Services.AddScoped<IInterviewCompetencyScoreService, InterviewCompetencyScoreService>();
 
 builder.Services.AddScoped<ICommentService, CommentService>();
+
+builder.Services.AddScoped<IPdfService, PdfService>();
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(
@@ -73,6 +88,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 
 var app = builder.Build();
+app.UseCors("AllowAll");
 
 using (var scope = app.Services.CreateScope())
 {
