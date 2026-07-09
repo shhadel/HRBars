@@ -60,6 +60,7 @@ public class CandidatesController : ControllerBase
     }
 
     [HttpPut("{id:guid}")]
+    [RequirePermission("candidates.edit")]
     public async Task<ActionResult> UpdateCandidate(Guid id, UpdateCandidate request)
     {
         try
@@ -78,6 +79,7 @@ public class CandidatesController : ControllerBase
     }
 
     [HttpDelete("{id:guid}")]
+    [RequirePermission("candidates.archive")]
     public async Task<ActionResult> ArchiveCandidate(Guid id)
     {
         var archived = await _candidateService.ArchiveCandidateAsync(id);
@@ -89,6 +91,7 @@ public class CandidatesController : ControllerBase
     }
 
     [HttpPut("restore/{id:guid}")]
+    [RequirePermission("candidates.archive")]
     public async Task<ActionResult> RestoreCandidate(Guid id)
     {
         var archived = await _candidateService.RestoreCandidateAsync(id);

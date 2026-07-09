@@ -2,6 +2,7 @@
 using HRBars.Application.DTOs.User;
 using HRBars.Application.Interfaces;
 using HRBars.Application.DTOs.Vacancy;
+using HRBars.WebAPI.Attributes;
 
 namespace HRBars.WebAPI.Controllers;
 
@@ -30,6 +31,7 @@ public class VacanciesController : ControllerBase
     [HttpGet]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [RequirePermission("vacancies.view")]
     public async Task<IActionResult> GetVacancies(
         [FromQuery] string? search = null,
         [FromQuery] string? department = null,
@@ -73,6 +75,7 @@ public class VacanciesController : ControllerBase
     [ProducesResponseType(typeof(VacancyResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [RequirePermission("vacancies.view")]
     public async Task<IActionResult> GetVacancyById(Guid id)
     {
         try
@@ -99,6 +102,7 @@ public class VacanciesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [RequirePermission("vacancies.create")]
     public async Task<IActionResult> CreateVacancy([FromBody] CreateVacancyRequest request)
     {
         if (!ModelState.IsValid)
@@ -129,6 +133,7 @@ public class VacanciesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [RequirePermission("vacancies.edit")]
     public async Task<IActionResult> UpdateVacancy(Guid id, [FromBody] UpdateVacancyRequest request)
     {
         if (!ModelState.IsValid)
@@ -162,6 +167,7 @@ public class VacanciesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [RequirePermission("vacancies.archive")]
     public async Task<IActionResult> ArchiveVacancy(Guid id)
     {
         try
@@ -192,6 +198,7 @@ public class VacanciesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [RequirePermission("vacancies.archive")]
     public async Task<IActionResult> UnarchiveVacancy(Guid id)
     {
         try

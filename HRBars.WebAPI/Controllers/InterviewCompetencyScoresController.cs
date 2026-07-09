@@ -2,6 +2,7 @@ using HRBars.Application.DTOs.InterviewScore;
 using HRBars.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using HRBars.WebAPI.Attributes;
 
 namespace HRBars.WebAPI.Controllers;
 
