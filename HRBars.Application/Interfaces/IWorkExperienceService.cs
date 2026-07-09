@@ -10,4 +10,5 @@ public interface IWorkExperienceService
     Task<WorkExperienceResponse?> GetWorkExperienceByIdAsync(Guid id);
     Task<List<WorkExperienceResponse>> GetWorkExperiencesByCandidateIdAsync(Guid candidateId);
     Task<bool> CandidateExistsAsync(Guid candidateId);
+    Task<List<string>> SearchCompaniesAsync(string query);
 }

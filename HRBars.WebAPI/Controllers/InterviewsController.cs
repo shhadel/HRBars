@@ -93,4 +93,15 @@ public class InterviewsController : ControllerBase
 
         return NoContent();
     }
+
+    [HttpPost("accept/{id:guid}")]
+    public async Task<IActionResult> AcceptInterview(Guid id)
+    {
+        var accepted = await _interviewService.AcceptInterviewAsync(id);
+
+        if (!accepted)
+            return NotFound();
+
+        return NoContent();
+    }
 }

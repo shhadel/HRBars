@@ -146,4 +146,23 @@ public class WorkExperienceService(AppDbContext context, ILogger<WorkExperienceS
     {
         return await _context.Candidates.AnyAsync(c => c.Id == candidateId);
     }
+
+    /// <summary>
+    /// Поиск компаний по введённому тексту
+    /// </summary>
+    public async Task<List<string>> SearchCompaniesAsync(string query)
+    {
+        if (string.IsNullOrWhiteSpace(query) || query.Length < 2)
+            return new List<string>();
+
+        query = query.ToLower().Trim();
+
+        return await _context.WorkExperiences
+            .Where(w => w.Company != null && w.Company.ToLower().Contains(query))
+            .Select(w => w.Company)
+            .Distinct()
+            .OrderBy(c => c)
+            .Take(10) // Ограничиваем количество подсказок
+            .ToListAsync();
+    }
 }

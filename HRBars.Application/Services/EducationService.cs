@@ -145,4 +145,23 @@ public class EducationService : IEducationService
     {
         return await _context.Candidates.AnyAsync(c => c.Id == candidateId);
     }
+
+    /// <summary>
+    /// Поиск учебных заведений по введённому тексту
+    /// </summary>
+    public async Task<List<string>> SearchInstitutionsAsync(string query)
+    {
+        if (string.IsNullOrWhiteSpace(query) || query.Length < 2)
+            return new List<string>();
+
+        query = query.ToLower().Trim();
+
+        return await _context.Educations
+            .Where(e => e.Institution != null && e.Institution.ToLower().Contains(query))
+            .Select(e => e.Institution)
+            .Distinct()
+            .OrderBy(i => i)
+            .Take(10) // Ограничиваем количество подсказок
+            .ToListAsync();
+    }
 }

@@ -432,4 +432,18 @@ public class InterviewService : IInterviewService
             _ => throw new InvalidOperationException("Неизвестный результат собеседования.")
         };
     }
+    public async Task<bool> AcceptInterviewAsync(Guid id)
+    {
+        var interview = _context.Interviews
+            .FirstOrDefault(i => i.Id == id);
+
+        if (interview == null)
+            return false;
+
+        interview.Result = 1;
+        _context.Interviews.Update(interview);
+        await _context.SaveChangesAsync();
+
+        return true;
+    }
 }

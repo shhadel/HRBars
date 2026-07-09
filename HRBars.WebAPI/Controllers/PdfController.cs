@@ -1,8 +1,8 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Authorization;
-using HRBars.Application.Interfaces;
+﻿using HRBars.Application.Interfaces;
 using HRBars.Infrastructure;
 using HRBars.WebAPI.Attributes;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 
 namespace HRBars.WebAPI.Controllers
 {
@@ -24,7 +24,7 @@ namespace HRBars.WebAPI.Controllers
         /// Скачать карточку кандидата
         /// </summary>
         [HttpGet("candidate/{candidateId:guid}")]
-        [RequirePermission("reports.download_candidate_card")]
+        ///[RequirePermission("candidates.view")]
         public async Task<IActionResult> DownloadCandidateCard(Guid candidateId)
         {
             try
@@ -47,7 +47,7 @@ namespace HRBars.WebAPI.Controllers
         /// Скачать протокол собеседования
         /// </summary>
         [HttpGet("interview/{interviewId:guid}")]
-        [RequirePermission("reports.download_interview_protocol")]
+        ///[RequirePermission("interviews.view")]
         public async Task<IActionResult> DownloadInterviewProtocol(Guid interviewId)
         {
             try
@@ -67,23 +67,21 @@ namespace HRBars.WebAPI.Controllers
         }
 
         /// <summary>
-        /// Скачать приглашение или отказ
+        /// Скачать приглашение или отказ по ID вакансии
         /// </summary>
-        [HttpGet("application/{applicationId:guid}/result")]
-        [RequirePermission("reports.offer")]
-        public async Task<IActionResult> DownloadOfferResult(Guid applicationId)
+        [HttpGet("vacancy/{vacancyId:guid}/offer")]
+        public async Task<IActionResult> DownloadOfferByVacancy(Guid vacancyId)
         {
             try
             {
-                // Определяем статус отклика через отдельный запрос к БД
-                // или передаём параметр из фронтенда
-                var isAccepted = true; // TODO: Определять из статуса Application
+                // isAccepted передаётся из запроса или определяется отдельно
+                var isAccepted = true; // TODO: Определять по статусу
 
-                var pdfBytes = await _pdfService.GenerateOfferAsync(applicationId, isAccepted);
+                var pdfBytes = await _pdfService.GenerateOfferByVacancyAsync(vacancyId, isAccepted);
 
                 var fileName = isAccepted
-                    ? $"Приглашение_{applicationId}.pdf"
-                    : $"Отказ_{applicationId}.pdf";
+                    ? $"Приглашение_по_вакансии_{vacancyId}.pdf"
+                    : $"Отказ_по_вакансии_{vacancyId}.pdf";
 
                 return File(pdfBytes, "application/pdf", fileName);
             }
@@ -93,7 +91,7 @@ namespace HRBars.WebAPI.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Ошибка при генерации оффера/отказа для {ApplicationId}", applicationId);
+                _logger.LogError(ex, "Ошибка при генерации оффера/отказа для вакансии {VacancyId}", vacancyId);
                 return StatusCode(500, new { message = "Внутренняя ошибка сервера" });
             }
         }

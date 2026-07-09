@@ -32,6 +32,7 @@ namespace HRBars.Infrastructure.Services
             var candidate = await _context.Candidates
                 .Include(c => c.WorkExperiences)
                 .Include(c => c.Educations)
+                .Include(c => c.DesiredVacancy) // Добавьте Include для вакансии
                 .FirstOrDefaultAsync(c => c.Id == candidateId);
 
             if (candidate == null)
@@ -99,14 +100,14 @@ namespace HRBars.Infrastructure.Services
                             void Row(string title, string value)
                             {
                                 table.Cell().BorderBottom(1).Padding(5).Text(title).Bold();
-                                table.Cell().BorderBottom(1).Padding(5).Text(value);
+                                table.Cell().BorderBottom(1).Padding(5).Text(value ?? "Не указано");
                             }
 
                             Row("ФИО", fullName);
                             Row("Телефон", candidate.Phone);
-                            Row("Email", candidate.Email ?? string.Empty);
-                            Row("Город", candidate.City ?? string.Empty);
-                            Row("Желаемая должность", candidate.DesiredVacancy.Title ?? "Не указана");
+                            Row("Email", candidate.Email);
+                            Row("Город", candidate.City);
+                            Row("Желаемая должность", candidate.DesiredVacancy?.Title);
                             Row("Опыт работы", $"{totalExperienceYears} лет");
                         });
 
@@ -341,6 +342,29 @@ namespace HRBars.Infrastructure.Services
         /// <summary>
         /// Генерация оффера или отказа
         /// </summary>
+        public async Task<byte[]> GenerateOfferByVacancyAsync(Guid vacancyId, bool isAccepted)
+        {
+            // 1. Находим вакансию
+            var vacancy = await _context.Vacancies
+                .FirstOrDefaultAsync(v => v.Id == vacancyId);
+
+            if (vacancy == null)
+                throw new InvalidOperationException("Вакансия не найдена");
+
+            // 2. Находим последний отклик по этой вакансии
+            var application = await _context.Applications
+                .Include(a => a.Candidate)
+                .Include(a => a.CreatedByUser)
+                .Where(a => a.VacancyId == vacancyId)
+                .OrderByDescending(a => a.AppliedAt)
+                .FirstOrDefaultAsync();
+
+            if (application == null)
+                throw new InvalidOperationException("Нет откликов на эту вакансию");
+
+            // 3. Генерируем PDF (вызываем существующий метод)
+            return await GenerateOfferAsync(application.Id, isAccepted);
+        }
         public async Task<byte[]> GenerateOfferAsync(Guid applicationId, bool isAccepted)
         {
             var application = await _context.Applications
@@ -419,7 +443,7 @@ namespace HRBars.Infrastructure.Services
                                     : "по результатам собеседования";
 
                             column.Item().Text(
-$@"Уважаемый(ая) {candidateName}!
+        $@"Уважаемый(ая) {candidateName}!
 
 Благодарим Вас за участие в конкурсе на должность «{vacancy?.Title ?? "Не указана"}»
 в отдел {vacancy?.Department ?? "Не указан"}.
@@ -444,7 +468,7 @@ $@"Уважаемый(ая) {candidateName}!
                         else
                         {
                             column.Item().Text(
-$@"Уважаемый(ая) {candidateName}!
+        $@"Уважаемый(ая) {candidateName}!
 
 Благодарим Вас за участие в собеседовании
 на должность «{vacancy?.Title ?? "Не указана"}»

@@ -17,7 +17,7 @@ namespace HRBars.Application.Services
 
         public UserService(
             AppDbContext context,
-            ILogger<UserService> logger, 
+            ILogger<UserService> logger,
             IEmailService emailService)
         {
             _context = context;
@@ -182,9 +182,16 @@ namespace HRBars.Application.Services
 
             await _context.SaveChangesAsync();
 
-            // 👇 Отправляем данные для входа на почту
             var fullName = $"{user.LastName} {user.FirstName} {user.MiddleName}".Trim();
-            await _emailService.SendCredentialsAsync(user.Email, fullName, password);
+
+            try
+            {
+                await _emailService.SendCredentialsAsync(user.Email, fullName, password);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Не удалось отправить email пользователю {Email}", user.Email);
+            }
 
             // Получение созданного пользователя с ролью
             var createdUser = await GetUserByIdAsync(user.Id);

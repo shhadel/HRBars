@@ -146,4 +146,27 @@ public class EducationController : ControllerBase
             return StatusCode(500, new { message = "Внутренняя ошибка сервера" });
         }
     }
+
+    /// <summary>
+    /// Поиск учебных заведений (автоподсказки)
+    /// </summary>
+    /// <remarks>
+    /// Возвращает список учебных заведений, которые уже есть в БД,
+    /// для автозаполнения при вводе
+    /// </remarks>
+    [HttpGet("search/institutions")]
+    [ProducesResponseType(typeof(List<string>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> SearchInstitutions([FromQuery] string query)
+    {
+        try
+        {
+            var results = await _educationService.SearchInstitutionsAsync(query);
+            return Ok(results);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Ошибка при поиске учебных заведений по запросу {Query}", query);
+            return StatusCode(500, new { message = "Внутренняя ошибка сервера" });
+        }
+    }
 }

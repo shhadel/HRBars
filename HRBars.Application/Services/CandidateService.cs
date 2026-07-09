@@ -115,6 +115,7 @@ public class CandidateService : ICandidateService
             ResumeStorageKey = candidate.ResumeStorageKey,
             CreatedAt = candidate.CreatedAt,
             ApplicationsCount = candidate.Applications.Count,
+            IsActive = candidate.ArchivedAt == null,
 
             Educations = candidate.Educations
                 .Select(e => new EducationResponse

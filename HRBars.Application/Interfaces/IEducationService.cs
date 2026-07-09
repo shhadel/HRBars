@@ -10,4 +10,5 @@ public interface IEducationService
     Task<EducationResponse?> GetEducationByIdAsync(Guid id);
     Task<List<EducationResponse>> GetEducationsByCandidateIdAsync(Guid candidateId);
     Task<bool> CandidateExistsAsync(Guid candidateId);
+    Task<List<string>> SearchInstitutionsAsync(string query);
 }

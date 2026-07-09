@@ -16,4 +16,5 @@ public interface IInterviewService
     Task<InterviewResponse?> MakeDecisionAsync(Guid id, MakeDecision request);
 
     Task<bool> ArchiveInterviewAsync(Guid id);
+    Task<bool> AcceptInterviewAsync(Guid id);
 }

@@ -17,6 +17,6 @@ namespace HRBars.Application.Interfaces
         /// <summary>
         /// Генерация оффера или отказа
         /// </summary>
-        Task<byte[]> GenerateOfferAsync(Guid applicationId, bool isAccepted);
+        Task<byte[]> GenerateOfferByVacancyAsync(Guid vacancyId, bool isAccepted);
     }
 }
