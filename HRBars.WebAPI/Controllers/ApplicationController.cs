@@ -1,6 +1,7 @@
 ﻿using System.Security.Claims;
 using HRBars.Application.DTOs.Application;
 using HRBars.Application.Interfaces;
+using HRBars.WebAPI.Attributes;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -34,6 +35,7 @@ public class ApplicationController : ControllerBase
     [HttpGet]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [RequirePermission("applications.view")]
     public async Task<IActionResult> GetApplications(
         [FromQuery] Guid? candidateId = null,
         [FromQuery] Guid? vacancyId = null,
@@ -85,6 +87,7 @@ public class ApplicationController : ControllerBase
     [ProducesResponseType(typeof(ApplicationResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [RequirePermission("applications.view")]
     public async Task<IActionResult> GetApplicationById(Guid id)
     {
         try
@@ -116,6 +119,7 @@ public class ApplicationController : ControllerBase
     [ProducesResponseType(StatusCodes.Status409Conflict)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [RequirePermission("applications.create")]
     public async Task<IActionResult> CreateApplication([FromBody] CreateApplicationRequest request)
     {
         if (!ModelState.IsValid)
@@ -155,6 +159,7 @@ public class ApplicationController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [RequirePermission("applications.edit")]
     public async Task<IActionResult> UpdateApplication(Guid id, [FromBody] UpdateApplicationRequest request)
     {
         if (!ModelState.IsValid)
@@ -191,6 +196,7 @@ public class ApplicationController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [RequirePermission("applications.change_status")]
     public async Task<IActionResult> ChangeStatus(Guid id, [FromBody] ChangeStatusRequest request)
     {
         if (!ModelState.IsValid)
@@ -223,6 +229,7 @@ public class ApplicationController : ControllerBase
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [RequirePermission("applications.delete")]
     public async Task<IActionResult> DeleteApplication(Guid id)
     {
         try

@@ -1,6 +1,7 @@
 using HRBars.Application.DTOs.Interview;
 using HRBars.Application.DTOs.User;
 using HRBars.Application.Interfaces;
+using HRBars.WebAPI.Attributes;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -19,6 +20,7 @@ public class InterviewsController : ControllerBase
     }
 
     [HttpGet]
+    [RequirePermission("interviews.view")]
     public async Task<ActionResult<PaginatedResult<InterviewResponse>>> GetInterviews(
         [FromQuery] GetInterviews query)
     {
@@ -28,6 +30,7 @@ public class InterviewsController : ControllerBase
     }
 
     [HttpGet("{id:guid}")]
+    [RequirePermission("interviews.view")]
     public async Task<ActionResult<InterviewDetails>> GetInterview(Guid id)
     {
         var interview = await _interviewService.GetInterviewByIdAsync(id);
@@ -39,6 +42,7 @@ public class InterviewsController : ControllerBase
     }
 
     [HttpPost]
+    [RequirePermission("interviews.create")]
     public async Task<ActionResult<InterviewResponse>> CreateInterview(
         CreateInterview request)
     {
@@ -51,6 +55,7 @@ public class InterviewsController : ControllerBase
     }
 
     [HttpPut("{id:guid}")]
+    [RequirePermission("interviews.edit")]
     public async Task<ActionResult<InterviewResponse>> UpdateInterview(
         Guid id,
         UpdateInterview request)
@@ -64,6 +69,7 @@ public class InterviewsController : ControllerBase
     }
 
     [HttpPatch("{id:guid}/decision")]
+    [RequirePermission("interviews.change_status")]
     public async Task<ActionResult<InterviewResponse>> MakeDecision(
         Guid id,
         MakeDecision request)
@@ -77,6 +83,7 @@ public class InterviewsController : ControllerBase
     }
 
     [HttpDelete("{id:guid}")]
+    [RequirePermission("interviews.delete")]
     public async Task<IActionResult> ArchiveInterview(Guid id)
     {
         var archived = await _interviewService.ArchiveInterviewAsync(id);

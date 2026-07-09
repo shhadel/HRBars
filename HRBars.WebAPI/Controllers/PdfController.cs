@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Authorization;
 using HRBars.Application.Interfaces;
 using HRBars.Infrastructure;
+using HRBars.WebAPI.Attributes;
 
 namespace HRBars.WebAPI.Controllers
 {
@@ -23,7 +24,7 @@ namespace HRBars.WebAPI.Controllers
         /// Скачать карточку кандидата
         /// </summary>
         [HttpGet("candidate/{candidateId:guid}")]
-        ///[RequirePermission("candidates.view")]
+        [RequirePermission("reports.download_candidate_card")]
         public async Task<IActionResult> DownloadCandidateCard(Guid candidateId)
         {
             try
@@ -46,7 +47,7 @@ namespace HRBars.WebAPI.Controllers
         /// Скачать протокол собеседования
         /// </summary>
         [HttpGet("interview/{interviewId:guid}")]
-        ///[RequirePermission("interviews.view")]
+        [RequirePermission("reports.download_interview_protocol")]
         public async Task<IActionResult> DownloadInterviewProtocol(Guid interviewId)
         {
             try
@@ -69,7 +70,7 @@ namespace HRBars.WebAPI.Controllers
         /// Скачать приглашение или отказ
         /// </summary>
         [HttpGet("application/{applicationId:guid}/result")]
-        ///[RequirePermission("reports.generate")]
+        [RequirePermission("reports.offer")]
         public async Task<IActionResult> DownloadOfferResult(Guid applicationId)
         {
             try

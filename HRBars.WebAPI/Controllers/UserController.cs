@@ -11,6 +11,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
+using HRBars.WebAPI.Attributes;
 
 namespace HRBars.WebAPI.Controllers;
 
@@ -34,6 +35,7 @@ public class UserController : ControllerBase
     [HttpGet]
     [ProducesResponseType(typeof(PaginatedResult<UserResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [RequirePermission("users.view")]
     public async Task<IActionResult> GetUsers(
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20,
@@ -61,6 +63,7 @@ public class UserController : ControllerBase
     [ProducesResponseType(typeof(UserDetails), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [RequirePermission("users.view")]
     public async Task<IActionResult> GetUserById(Guid id)
     {
         var user = await _userService.GetUserByIdAsync(id);
@@ -80,6 +83,7 @@ public class UserController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
+    [RequirePermission("users.create")]
     public async Task<IActionResult> CreateUser([FromBody] CreateUser request)
     {
         if (!ModelState.IsValid)
@@ -115,6 +119,7 @@ public class UserController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
+    [RequirePermission("users.edit")]
     public async Task<IActionResult> UpdateUser(Guid id, [FromBody] UpdateUser request)
     {
         if (!ModelState.IsValid)
@@ -152,6 +157,7 @@ public class UserController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [RequirePermission("users.delete")]
     public async Task<IActionResult> DeactivateUser(Guid id)
     {
         try
@@ -180,6 +186,7 @@ public class UserController : ControllerBase
     [HttpGet("me")]
     [ProducesResponseType(typeof(UserResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [RequirePermission("users.view")]
     public async Task<IActionResult> GetCurrentUser()
     {
         var userId = User.FindFirst("userId")?.Value;
@@ -207,6 +214,7 @@ public class UserController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [RequirePermission("users.restore")]
     public async Task<IActionResult> ActivateUser(Guid id)
     {
         try
