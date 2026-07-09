@@ -1,5 +1,6 @@
 using HRBars.Application.Interfaces;
 using HRBars.Application.Services;
+using HRBars.Domain.Settings;
 using HRBars.Infrastructure.Data;
 using HRBars.Infrastructure.Services;
 using HRBars.WebAPI.Services;
@@ -41,6 +42,8 @@ builder.Services.AddSwaggerGen(options =>
 });
 
 builder.Services.AddScoped<TokenService>();
+builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
+builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<ICandidateService, CandidateService>();
 
@@ -52,7 +55,6 @@ builder.Services.AddScoped<IWorkExperienceService, WorkExperienceService>();
 builder.Services.AddScoped<IApplicationService, ApplicationService>();
 
 builder.Services.AddScoped<ICompetencyMatrixService, CompetencyMatrixService>();
-builder.Services.AddScoped<ICompetencyService, CompetencyService>();
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddMemoryCache();

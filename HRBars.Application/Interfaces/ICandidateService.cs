@@ -1,3 +1,4 @@
+using HRBars.Application.DTOs.Application;
 using HRBars.Application.DTOs.Candidate;
 using HRBars.Application.DTOs.User;
 
@@ -14,4 +15,6 @@ public interface ICandidateService
     Task<CandidateResponse?> UpdateCandidateAsync(Guid id, UpdateCandidate request);
 
     Task<bool> ArchiveCandidateAsync(Guid id);
+    Task<bool> RestoreCandidateAsync(Guid id);
+    Task<List<ApplicationResponse>> GetCandidateApplicationAsync(Guid candidateId);
 }

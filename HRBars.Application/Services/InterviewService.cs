@@ -85,9 +85,10 @@ public class InterviewService : IInterviewService
                 InterviewDate = i.InterviewDate,
                 Status = (InterviewStatus)i.Status,
                 Format = (InterviewFormat)i.Format,
-                Result = i.Result.HasValue 
+                Result = i.Result.HasValue
                 ? (InterviewResult?)i.Result.Value
                 : null,
+                Location = i.Location,
 
                 CandidateName = string.Join(" ",
                     new[]
@@ -145,8 +146,8 @@ public class InterviewService : IInterviewService
 
             Status = (InterviewStatus)interview.Status,
 
-            Result = interview.Result.HasValue 
-            ? (InterviewResult?)interview.Result.Value 
+            Result = interview.Result.HasValue
+            ? (InterviewResult?)interview.Result.Value
             : null,
 
             CandidateName = BuildFullName(
@@ -235,7 +236,7 @@ public class InterviewService : IInterviewService
             InterviewDate = interview.InterviewDate,
             Format = (InterviewFormat)interview.Format,
             Status = (InterviewStatus)interview.Status,
-            Result = interview.Result.HasValue 
+            Result = interview.Result.HasValue
             ? (InterviewResult?)interview.Result.Value
             : null,
 
@@ -274,6 +275,8 @@ public class InterviewService : IInterviewService
         interview.DurationMinutes = request.DurationMinutes;
         interview.Location = request.Location?.Trim();
         interview.Plan = request.Plan?.Trim();
+        interview.UpdatedByUserId = _currentUser.UserId;
+        interview.UpdatedAt = DateTime.UtcNow;
 
         await _context.SaveChangesAsync();
 
@@ -283,8 +286,8 @@ public class InterviewService : IInterviewService
             InterviewDate = interview.InterviewDate,
             Format = (InterviewFormat)interview.Format,
             Status = (InterviewStatus)interview.Status,
-            Result = interview.Result.HasValue 
-            ? (InterviewResult?)interview.Result.Value 
+            Result = interview.Result.HasValue
+            ? (InterviewResult?)interview.Result.Value
             : null,
 
             CandidateName = BuildFullName(
@@ -382,7 +385,7 @@ public class InterviewService : IInterviewService
         if (interview == null)
             return false;
 
-        if (interview.Status != (short)InterviewStatus.Completed && 
+        if (interview.Status != (short)InterviewStatus.Completed &&
             interview.Status != (short)InterviewStatus.Cancelled)
         {
             throw new InvalidOperationException(
@@ -390,6 +393,7 @@ public class InterviewService : IInterviewService
         }
 
         interview.ArchivedAt = DateTime.UtcNow;
+        interview.ArchivedByUserId = _currentUser.UserId;
 
         await _context.SaveChangesAsync();
 

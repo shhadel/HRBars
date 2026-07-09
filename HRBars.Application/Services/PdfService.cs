@@ -106,7 +106,7 @@ namespace HRBars.Infrastructure.Services
                             Row("Телефон", candidate.Phone);
                             Row("Email", candidate.Email ?? string.Empty);
                             Row("Город", candidate.City ?? string.Empty);
-                            Row("Желаемая должность", candidate.DesiredVacancy ?? "Не указана");
+                            Row("Желаемая должность", candidate.DesiredVacancy.Title ?? "Не указана");
                             Row("Опыт работы", $"{totalExperienceYears} лет");
                         });
 

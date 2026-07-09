@@ -1,4 +1,7 @@
-﻿using HRBars.Application.DTOs.User;
+﻿using HRBars.Application.DTOs.Candidate;
+using HRBars.Application.DTOs.Competency;
+using HRBars.Application.DTOs.CompetencyMatrix;
+using HRBars.Application.DTOs.User;
 using HRBars.Application.DTOs.Vacancy;
 using HRBars.Application.Interfaces;
 using HRBars.Domain.Entities;
@@ -13,20 +16,24 @@ public class VacancyService : IVacancyService
 {
     private readonly AppDbContext _context;
     private readonly ILogger<VacancyService> _logger;
+    private readonly ICurrentUserService _currentUser;
 
-    public VacancyService(AppDbContext context, ILogger<VacancyService> logger)
+    public VacancyService(AppDbContext context, ILogger<VacancyService> logger, ICurrentUserService currentUser)
     {
         _context = context;
         _logger = logger;
+        _currentUser = currentUser;
     }
 
-    public async Task<(List<VacancyListResponse> Items, int TotalCount)> GetVacanciesAsync(GetVacanciesQuery query)
+    public async Task<(List<VacancyResponse> Items, int TotalCount)> GetVacanciesAsync(GetVacanciesQuery query)
     {
         var vacanciesQuery = _context.Vacancies
             .Include(v => v.Applications)
+                .ThenInclude(x => x.Interviews)
+            .Include(v => v.CreatedByUser) // ✅ Добавляем Include для CreatedByUser
+            .Include(v => v.UpdatedByUser) // ✅ Добавляем Include для UpdatedByUser
             .AsQueryable();
 
-        // Фильтрация по поиску
         if (!string.IsNullOrWhiteSpace(query.Search))
         {
             var search = query.Search.ToLower();
@@ -36,13 +43,11 @@ public class VacancyService : IVacancyService
                 (v.Description != null && v.Description.ToLower().Contains(search)));
         }
 
-        // Фильтрация по отделу
         if (!string.IsNullOrWhiteSpace(query.Department))
         {
             vacanciesQuery = vacanciesQuery.Where(v => v.Department == query.Department);
         }
 
-        // Фильтрация по архиву
         if (query.IsArchived.HasValue)
         {
             vacanciesQuery = vacanciesQuery.Where(v => v.IsArchived == query.IsArchived.Value);
@@ -54,17 +59,25 @@ public class VacancyService : IVacancyService
             .OrderByDescending(v => v.CreatedAt)
             .Skip((query.Page - 1) * query.PageSize)
             .Take(query.PageSize)
-            .Select(v => new VacancyListResponse
+            .Select(v => new VacancyResponse
             {
                 Id = v.Id,
                 Title = v.Title,
                 Department = v.Department,
+                Description = v.Description,
                 SalaryFrom = v.SalaryFrom,
                 SalaryTo = v.SalaryTo,
                 ExperienceRequired = (ExperienceLevel)v.ExperienceRequired,
                 EmploymentType = (EmploymentType)v.EmploymentType,
                 IsArchived = v.IsArchived,
                 CreatedAt = v.CreatedAt,
+                CreatedBy = v.CreatedByUser != null
+                    ? $"{v.CreatedByUser.FirstName} {v.CreatedByUser.LastName}"
+                    : "Unknown",
+                ModifiedAt = v.UpdatedAt,
+                ModifiedBy = v.UpdatedByUser != null
+                    ? $"{v.UpdatedByUser.FirstName} {v.UpdatedByUser.LastName}"
+                    : null,
                 ApplicationsCount = v.Applications.Count
             })
             .ToListAsync();
@@ -77,11 +90,50 @@ public class VacancyService : IVacancyService
         var vacancy = await _context.Vacancies
             .Include(v => v.Applications)
             .Include(v => v.CompetencyMatrixTemplates)
-            .ThenInclude(m => m.Competencies)
+                .ThenInclude(m => m.Competencies)
+            .Include(v => v.CreatedByUser)
+                .ThenInclude(u => u.Role)
+            .Include(v => v.UpdatedByUser)
+                .ThenInclude(u => u.Role)
             .FirstOrDefaultAsync(v => v.Id == id);
 
         if (vacancy == null)
             return null;
+
+        var competencyMatrixTemplate = vacancy.CompetencyMatrixTemplates
+            .FirstOrDefault();
+
+        CompetencyMatrixResponse? competencyMatrixResponse = null;
+
+        if (competencyMatrixTemplate != null)
+        {
+            var competencyResponses = competencyMatrixTemplate.Competencies
+                .Select(c => new CompetencyResponse
+                {
+                    Id = c.Id,
+                    Name = c.Name
+                })
+                .ToList();
+
+            competencyMatrixResponse = new CompetencyMatrixResponse
+            {
+                Id = competencyMatrixTemplate.Id,
+                VacancyId = id,
+                Name = competencyMatrixTemplate.Name,
+                VacancyTitle = vacancy.Title,
+                Competencies = competencyResponses
+            };
+        }
+
+        var createdBy = vacancy.CreatedByUser != null
+            ? $"{vacancy.CreatedByUser.FirstName} {vacancy.CreatedByUser.LastName}" +
+              (vacancy.CreatedByUser.Role != null ? $" ({vacancy.CreatedByUser.Role.Name})" : "")
+            : "Unknown";
+
+        var updatedBy = vacancy.UpdatedByUser != null
+            ? $"{vacancy.UpdatedByUser.FirstName} {vacancy.UpdatedByUser.LastName}" +
+              (vacancy.UpdatedByUser.Role != null ? $" ({vacancy.UpdatedByUser.Role.Name})" : "")
+            : null;
 
         return new VacancyResponse
         {
@@ -95,19 +147,16 @@ public class VacancyService : IVacancyService
             EmploymentType = (EmploymentType)vacancy.EmploymentType,
             IsArchived = vacancy.IsArchived,
             CreatedAt = vacancy.CreatedAt,
-            ApplicationsCount = vacancy.Applications.Count,
-            Competencies = vacancy.CompetencyMatrixTemplates
-                .SelectMany(m => m.Competencies)
-                .Where(c => !c.IsArchived)
-                .Select(c => c.Name)
-                .Distinct()
-                .ToList()
+            CreatedBy = createdBy,
+            ModifiedAt = vacancy.UpdatedAt,
+            ModifiedBy = updatedBy,
+            ApplicationsCount = vacancy.Applications?.Count ?? 0,
+            Matrix = competencyMatrixResponse
         };
     }
 
     public async Task<VacancyResponse> CreateVacancyAsync(CreateVacancyRequest request)
     {
-        // Проверка на дубликат названия
         var existingVacancy = await _context.Vacancies
             .AnyAsync(v => v.Title == request.Title && !v.IsArchived);
 
@@ -125,7 +174,8 @@ public class VacancyService : IVacancyService
             ExperienceRequired = (short)request.ExperienceRequired,
             EmploymentType = (short)request.EmploymentType,
             IsArchived = false,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.UtcNow,
+            CreatedByUserId = _currentUser.UserId
         };
 
         await _context.Vacancies.AddAsync(vacancy);
@@ -160,6 +210,8 @@ public class VacancyService : IVacancyService
         vacancy.SalaryTo = request.SalaryTo;
         vacancy.ExperienceRequired = (short)request.ExperienceRequired;
         vacancy.EmploymentType = (short)request.EmploymentType;
+        vacancy.UpdatedByUserId = _currentUser.UserId;
+        vacancy.UpdatedAt = DateTime.UtcNow;
 
         _context.Vacancies.Update(vacancy);
         await _context.SaveChangesAsync();
@@ -182,6 +234,8 @@ public class VacancyService : IVacancyService
             throw new InvalidOperationException("Вакансия уже архивирована");
 
         vacancy.IsArchived = true;
+        vacancy.ArchivedByUserId = _currentUser.UserId;
+        vacancy.ArchivedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
 
         _logger.LogInformation("Архивирована вакансия {VacancyId}", id);
@@ -236,5 +290,40 @@ public class VacancyService : IVacancyService
     public async Task<bool> VacancyExistsAsync(Guid id)
     {
         return await _context.Vacancies.AnyAsync(v => v.Id == id);
+    }
+
+    public async Task<List<CandidateResponse>> GetCandidatesByVacancyIdAsync(Guid vacancyId)
+    {
+        // Проверяем существование вакансии
+        var vacancyExists = await _context.Vacancies
+            .AnyAsync(v => v.Id == vacancyId);
+
+        if (!vacancyExists)
+            throw new KeyNotFoundException($"Вакансия с ID {vacancyId} не найдена");
+
+        // Получаем кандидатов, которые подали заявку на эту вакансию
+        var candidates = await _context.Candidates
+            .Include(c => c.Applications)
+            .ThenInclude(a => a.Vacancy)
+            .Include(c => c.Educations)
+            .Include(c => c.WorkExperiences)
+            .Where(c => c.Applications.Any(a => a.VacancyId == vacancyId))
+            .Select(c => new CandidateResponse
+            {
+                Id = c.Id,
+                FirstName = c.FirstName,
+                LastName = c.LastName,
+                MiddleName = c.MiddleName,
+                FullName = c.LastName + " " + c.FirstName + " " + c.MiddleName,
+                Phone = c.Phone,
+                Email = c.Email,
+                City = c.City,
+                Skills = c.Skills,
+                CreatedAt = c.CreatedAt
+            })
+            .OrderByDescending(c => c.CreatedAt)
+            .ToListAsync();
+
+        return candidates;
     }
 }

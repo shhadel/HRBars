@@ -23,5 +23,6 @@ namespace HRBars.Application.DTOs.Candidate
         public string? Skills { get; set; }
 
         public DateTime CreatedAt { get; set; }
+        public bool IsActive { get; set; }
     }
 }

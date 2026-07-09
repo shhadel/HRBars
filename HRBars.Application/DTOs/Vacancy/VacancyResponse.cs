@@ -1,4 +1,5 @@
-﻿using HRBars.Domain.Enums;
+﻿using HRBars.Application.DTOs.CompetencyMatrix;
+using HRBars.Domain.Enums;
 
 namespace HRBars.Application.DTOs.Vacancy
 {
@@ -14,7 +15,10 @@ namespace HRBars.Application.DTOs.Vacancy
         public EmploymentType EmploymentType { get; set; }
         public bool IsArchived { get; set; }
         public DateTime CreatedAt { get; set; }
+        public string CreatedBy { get; set; }
+        public DateTime? ModifiedAt { get; set; }
+        public string? ModifiedBy { get; set; }
         public int ApplicationsCount { get; set; }
-        public List<string> Competencies { get; set; } = new();
+        public CompetencyMatrixResponse? Matrix { get; set; } = new();
     }
 }

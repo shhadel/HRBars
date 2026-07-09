@@ -20,10 +20,7 @@ namespace HRBars.Application.DTOs.User
         [MaxLength(255, ErrorMessage = "Email не может превышать 255 символов")]
         public string Email { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "Пароль обязателен")]
-        [MinLength(6, ErrorMessage = "Пароль должен содержать минимум 6 символов")]
-        [MaxLength(100, ErrorMessage = "Пароль не может превышать 100 символов")]
-        public string Password { get; set; } = string.Empty;
+        public string? Password { get; set; }
 
         [Required(ErrorMessage = "Роль обязательна")]
         public string RoleName { get; set; } = string.Empty;

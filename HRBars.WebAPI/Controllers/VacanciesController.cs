@@ -215,31 +215,31 @@ public class VacanciesController : ControllerBase
     }
 
     /// <summary>
-    /// Удалить вакансию
+    /// Получить кандидатов по вакансии
     /// </summary>
-    [HttpDelete("{id:guid}")]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [HttpGet("{id:guid}/candidates")]
+    [ProducesResponseType(typeof(VacancyResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    public async Task<IActionResult> DeleteVacancy(Guid id)
+    public async Task<IActionResult> GetVacancyCandidates(Guid id)
     {
         try
         {
-            var result = await _vacancyService.DeleteVacancyAsync(id);
+            var candidates = await _vacancyService.GetCandidatesByVacancyIdAsync(id);
 
-            if (!result)
-                return NotFound(new { message = "Вакансия не найдена" });
+            if (candidates == null)
+                return NotFound(new { message = "Кандидаты не найдены" });
 
-            return NoContent();
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { message = ex.Message });
+            return Ok(new
+            {
+                vacancyId = id,
+                count = candidates.Count,
+                items = candidates
+            });
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Ошибка при удалении вакансии {VacancyId}", id);
+            _logger.LogError(ex, "Ошибка при получении вакансии {VacancyId}", id);
             return StatusCode(500, new { message = "Внутренняя ошибка сервера" });
         }
     }

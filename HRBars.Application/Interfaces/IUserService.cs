@@ -12,5 +12,6 @@ namespace HRBars.Application.Interfaces
         Task<bool> ActivateUserAsync(Guid id);
         Task<UserResponse?> GetUserByEmailAsync(string email);
         Task<bool> UserExistsAsync(Guid id);
+        Task<List<PermissionResponse>> GetAvailablePermissionsAsync();
     }
 }

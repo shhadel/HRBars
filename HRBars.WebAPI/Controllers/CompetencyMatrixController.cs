@@ -22,39 +22,18 @@ public class CompetencyMatrixController : ControllerBase
     }
 
     /// <summary>
-    /// Получить список матриц компетенций
+    /// Получить список матриц
     /// </summary>
     [HttpGet]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    public async Task<IActionResult> GetCompetencyMatrices(
-        [FromQuery] Guid? vacancyId = null,
-        [FromQuery] string? search = null,
-        [FromQuery] bool? isArchived = null,
-        [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 20)
+    public async Task<IActionResult> GetMatrixList()
     {
         try
         {
-            var query = new GetCompetencyMatricesQuery
-            {
-                Page = page,
-                PageSize = pageSize,
-                VacancyId = vacancyId,
-                Search = search,
-                IsArchived = isArchived
-            };
+            var matrixListResponses = await _competencyMatrixService.GetMatrixByIdAsync();
 
-            var (items, totalCount) = await _competencyMatrixService.GetCompetencyMatricesAsync(query);
-
-            return Ok(new
-            {
-                items,
-                totalCount,
-                page,
-                pageSize,
-                totalPages = (int)Math.Ceiling((double)totalCount / pageSize)
-            });
+            return Ok(matrixListResponses);
         }
         catch (Exception ex)
         {
@@ -118,65 +97,6 @@ public class CompetencyMatrixController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Ошибка при создании матрицы компетенций");
-            return StatusCode(500, new { message = "Внутренняя ошибка сервера" });
-        }
-    }
-
-    /// <summary>
-    /// Редактировать матрицу компетенций
-    /// </summary>
-    [HttpPut("{id:guid}")]
-    [ProducesResponseType(typeof(CompetencyMatrixResponse), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status409Conflict)]
-    [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    public async Task<IActionResult> UpdateCompetencyMatrix(Guid id, [FromBody] UpdateCompetencyMatrixRequest request)
-    {
-        if (!ModelState.IsValid)
-            return BadRequest(ModelState);
-
-        try
-        {
-            var matrix = await _competencyMatrixService.UpdateCompetencyMatrixAsync(id, request);
-            return Ok(matrix);
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(new { message = ex.Message });
-        }
-        catch (InvalidOperationException ex)
-        {
-            return Conflict(new { message = ex.Message });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Ошибка при обновлении матрицы компетенций {MatrixId}", id);
-            return StatusCode(500, new { message = "Внутренняя ошибка сервера" });
-        }
-    }
-
-    /// <summary>
-    /// Удалить матрицу компетенций
-    /// </summary>
-    [HttpDelete("{id:guid}")]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    public async Task<IActionResult> DeleteCompetencyMatrix(Guid id)
-    {
-        try
-        {
-            var result = await _competencyMatrixService.DeleteCompetencyMatrixAsync(id);
-
-            if (!result)
-                return NotFound(new { message = "Матрица компетенций не найдена" });
-
-            return NoContent();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Ошибка при удалении матрицы компетенций {MatrixId}", id);
             return StatusCode(500, new { message = "Внутренняя ошибка сервера" });
         }
     }

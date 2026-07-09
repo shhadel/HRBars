@@ -13,13 +13,16 @@ namespace HRBars.Application.Services
     {
         private readonly AppDbContext _context;
         private readonly ILogger<UserService> _logger;
+        private readonly IEmailService _emailService;
 
         public UserService(
             AppDbContext context,
-            ILogger<UserService> logger)
+            ILogger<UserService> logger, 
+            IEmailService emailService)
         {
             _context = context;
             _logger = logger;
+            _emailService = emailService;
         }
 
         public async Task<PaginatedResult<UserResponse>> GetUsersAsync(GetUsers query)
@@ -130,6 +133,11 @@ namespace HRBars.Application.Services
             if (role == null)
                 throw new InvalidOperationException($"Роль '{request.RoleName}' не найдена");
 
+            // 👇 Генерируем пароль, если он не указан
+            var password = string.IsNullOrWhiteSpace(request.Password)
+                ? GenerateRandomPassword()
+                : request.Password;
+
             // Создание пользователя
             var user = new User
             {
@@ -138,19 +146,26 @@ namespace HRBars.Application.Services
                 LastName = request.LastName,
                 MiddleName = request.MiddleName,
                 Email = request.Email,
-                PasswordHash = HashPassword(request.Password),
+                PasswordHash = HashPassword(password),
                 RoleId = role.Id,
                 IsActive = true,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.UtcNow,
+                CreatedByUserId = createdByUserId
             };
 
             await _context.Users.AddAsync(user);
 
+            var permissions = new List<Permission>();
+
             // Добавление прав, если указаны
             if (request.Permissions != null && request.Permissions.Any())
             {
-                var permissions = await _context.Permissions
-                    .Where(p => request.Permissions.Contains(p.Name))
+                var permissionIds = request.Permissions
+                    .Select(Guid.Parse)
+                    .ToList();
+
+                permissions = await _context.Permissions
+                    .Where(p => permissionIds.Contains(p.Id))
                     .ToListAsync();
 
                 foreach (var permission in permissions)
@@ -167,6 +182,10 @@ namespace HRBars.Application.Services
 
             await _context.SaveChangesAsync();
 
+            // 👇 Отправляем данные для входа на почту
+            var fullName = $"{user.LastName} {user.FirstName} {user.MiddleName}".Trim();
+            await _emailService.SendCredentialsAsync(user.Email, fullName, password);
+
             // Получение созданного пользователя с ролью
             var createdUser = await GetUserByIdAsync(user.Id);
 
@@ -176,13 +195,22 @@ namespace HRBars.Application.Services
                 FirstName = user.FirstName,
                 LastName = user.LastName,
                 MiddleName = user.MiddleName,
-                FullName = $"{user.LastName} {user.FirstName} {user.MiddleName}".Trim(),
+                FullName = fullName,
                 Email = user.Email,
                 RoleName = role.Name,
                 IsActive = user.IsActive,
                 CreatedAt = user.CreatedAt,
-                Permissions = request.Permissions ?? new List<string>()
+                Permissions = permissions.Select(p => p.Name).ToList()
             };
+        }
+
+        // 👇 Метод для генерации случайного пароля
+        private string GenerateRandomPassword(int length = 12)
+        {
+            const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
+            var random = new Random();
+            return new string(Enumerable.Repeat(chars, length)
+                .Select(s => s[random.Next(s.Length)]).ToArray());
         }
 
         public async Task<UserResponse?> UpdateUserAsync(Guid id, UpdateUser request)
@@ -336,6 +364,22 @@ namespace HRBars.Application.Services
             using var sha256 = SHA256.Create();
             var hashedBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(password));
             return Convert.ToBase64String(hashedBytes);
+        }
+        public async Task<List<PermissionResponse>> GetAvailablePermissionsAsync()
+        {
+            var permissions = await _context.Permissions
+                .Select(p => new PermissionResponse
+                {
+                    Id = p.Id,
+                    Name = p.Name,
+                    Description = p.Description,
+                    Category = p.Category
+                })
+                .OrderBy(p => p.Category)
+                .ThenBy(p => p.Name)
+                .ToListAsync();
+
+            return permissions;
         }
     }
 }

@@ -228,4 +228,18 @@ public class UserController : ControllerBase
             return StatusCode(500, new { message = "Внутренняя ошибка сервера" });
         }
     }
+
+    [HttpGet("permissions")]
+    [ProducesResponseType(typeof(UserDetails), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> GetAvailablePermissions(Guid id)
+    {
+        var permissions = await _userService.GetAvailablePermissionsAsync();
+
+        if (permissions == null)
+            return NotFound(new { message = "Прав нет" });
+
+        return Ok(permissions);
+    }
 }
